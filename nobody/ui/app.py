@@ -4,11 +4,13 @@ Title → crisis → front page → crisis … → epilogue → title. A crisis
 screen shows the four meters, the dateline, the board on a papyrus
 card, the answers as buttons and the clock running down; the front
 page shows the paper; the epilogue shows how it ended and the score.
-`run` opens a window; `screenshots` renders every screen headlessly
-to PNG files, which is how the look is checked without a display.
+`run` opens a window sized to the screen and drawn at its full
+resolution; `screenshots` renders every screen headlessly to PNG
+files, which is how the look is checked without a display.
 """
 
 import json
+import math
 import os
 import time
 
@@ -17,6 +19,7 @@ import pygame
 from ..session import Session
 from . import draw as D
 from . import theme as T
+from .window import open_window
 
 RUNS_FILE = os.path.join(os.path.expanduser('~'), '.nobody', 'runs.json')
 
@@ -51,7 +54,7 @@ def save_run(world, record):
 
 class App:
 
-    def __init__(self, world, library, timer=None, scale=1.0, headless=False,
+    def __init__(self, world, library, timer=None, scale=None, headless=False,
                  seed=None, live=False, library_path=None):
         self.world = world
         self.library = library
@@ -68,13 +71,21 @@ class App:
             os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
             os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
         pygame.init()
-        pygame.display.set_caption(f'{world.title}: {world.subtitle}')
-        self.canvas = pygame.Surface((T.W, T.H))
+        title = f'{world.title}: {world.subtitle}'
         if headless:
+            # a plain surface, `scale` device pixels per logical unit
             self.window = None
+            k = 1.0 if scale is None else scale
+            self.surface = pygame.Surface((max(1, round(T.W * k)),
+                                           max(1, round(T.H * k))))
         else:
-            self.window = pygame.display.set_mode(
-                (int(T.W * scale), int(T.H * scale)))
+            # as large as fits the screen unless a scale was asked for;
+            # high-DPI, so the surface may hold more pixels than that
+            self.window = open_window(title, scale)
+            self.surface = self.window.get_surface()
+        self.canvas = None
+        self._fitted = None
+        self.fit()
         self.clock = pygame.time.Clock()
         self.session = None
         self.screen = TitleScreen(self)
@@ -101,9 +112,33 @@ class App:
                                         say=lambda text: None)
         return self._generator
 
+    def fit(self):
+        """The canvas for the surface as it is now: the largest 1:2
+        area that fits, centred — the whole window at first, a
+        letterboxed part of it once the window was resized. Fonts
+        follow the scale. Cheap unless the size changed."""
+        if self.window is not None:
+            self.surface = self.window.get_surface()
+        size = self.surface.get_size()
+        if size == self._fitted:
+            return
+        sw, sh = size
+        k = max(0.1, min(sw / T.W, sh / T.H))
+        T.set_scale(k)
+        self.canvas = D.Canvas(self.surface, k,
+                               ((sw - T.W * k) / 2, (sh - T.H * k) / 2))
+        self._fitted = size
+
     def mouse(self):
+        """The pointer in logical units. The window reports points;
+        the surface may hold more pixels than that."""
         x, y = pygame.mouse.get_pos()
-        return int(x / self.scale), int(y / self.scale)
+        if self.window is not None:
+            ww, wh = self.window.size
+            sw, sh = self.surface.get_size()
+            x, y = x * sw / ww, y * sh / wh
+        c = self.canvas
+        return math.floor((x - c.ox) / c.k), math.floor((y - c.oy) / c.k)
 
     def run(self):
         while self.running:
@@ -117,31 +152,30 @@ class App:
                     self.running = False
                 else:
                     self.screen.handle(event)
+            self.fit()
             self.screen.tick()
             self.screen.draw(self.canvas)
             if self.window is not None:
-                if self.scale == 1.0:
-                    self.window.blit(self.canvas, (0, 0))
-                else:
-                    pygame.transform.smoothscale(self.canvas, self.window.get_size(),
-                                                 self.window)
-                pygame.display.flip()
+                self.window.flip()
             self.clock.tick(60)
         pygame.quit()
 
     def frame(self):
-        """Draw the current screen once, off-window (for screenshots)."""
+        """Draw the current screen once, off-window (for screenshots);
+        the surface drawn on."""
+        self.fit()
         self.screen.tick()
         self.screen.draw(self.canvas)
-        return self.canvas
+        return self.surface
 
 
 # --- pieces every screen shares --------------------------------------------------
 
 def sea(surface, phase=0.0):
     surface.fill(T.SEA)
-    D.waves(surface, (0, 0, T.W, T.H), T.SEA_LIGHT, rows=14, amp=3,
-            wavelength=110, width=1, phase=phase)
+    x, y, w, h = surface.bounds()       # the letterbox, if any, is sea too
+    D.waves(surface, (x, y, w, h), T.SEA_LIGHT, rows=max(1, round(h / 63)),
+            amp=3, wavelength=110, width=1, phase=phase)
 
 
 def meters(surface, app, y=14):
@@ -190,8 +224,9 @@ class Button:
         self.small = small
 
     def draw(self, surface, font, hover, fill=T.TERRACOTTA):
+        small = (self.small, T.font(12, italic=True)) if self.small else None
         D.button(surface, self.rect, self.label, font, fill=fill,
-                 hover=hover, small=self.small)
+                 hover=hover, small=small)
 
 
 # --- the title ------------------------------------------------------------------
@@ -273,9 +308,7 @@ class TitleScreen:
 
     def draw_how(self, surface):
         world = self.app.world
-        dim = pygame.Surface((T.W, T.H), pygame.SRCALPHA)
-        dim.fill((*T.SEA_DARK, 200))
-        surface.blit(dim, (0, 0))
+        surface.dim(T.SEA_DARK, 200)
         r = wrap_card(surface, (24, 60, T.W - 48, T.H - 120), 'How it is played')
         y = r.y + 60
         f = T.font(15)
@@ -331,7 +364,7 @@ class CrisisScreen:
                 moved = ', '.join(f'{self.app.world.faction(m).label if self.app.world.faction(m) else m} '
                                   f'{d:+d}' for m, d in schema.meter.items()
                                   if self.app.world.faction(m))
-                small = (moved or 'no cost to anyone', T.font(12, italic=True))
+                small = moved or 'no cost to anyone'
             self.buttons.append(Button((24, y + i * (h + gap), T.W - 48, h),
                                        o.label, i, small))
         self.card_bottom = y - 14
@@ -416,12 +449,10 @@ class CrisisScreen:
         # painted the way a cup would carry it
         if r.bottom - (y + used) > 190:
             vy = r.bottom - 96
-            clip = surface.get_clip()
-            surface.set_clip(pygame.Rect(r.x + 12, vy - 70, r.width - 24, 150))
-            D.waves(surface, (r.x + 12, vy - 8, r.width - 24, 60), T.INK_SOFT,
-                    rows=3, amp=3, wavelength=70, width=1)
-            D.ship(surface, (r.centerx, vy), 150, T.INK, T.PAPYRUS_DK)
-            surface.set_clip(clip)
+            with surface.clip((r.x + 12, vy - 70, r.width - 24, 150)):
+                D.waves(surface, (r.x + 12, vy - 8, r.width - 24, 60), T.INK_SOFT,
+                        rows=3, amp=3, wavelength=70, width=1)
+                D.ship(surface, (r.centerx, vy), 150, T.INK, T.PAPYRUS_DK)
             D.meander(surface, (r.x + 10, r.bottom - 20, r.width - 20, 12),
                       T.OCHRE, cell=12, width=2)
         # the answers
@@ -486,8 +517,8 @@ class PaperScreen:
         meters(surface, app)
         r = pygame.Rect(24, 104, T.W - 48, self.button.rect.y - 118)
         D.shadow_rect(surface, r, 4, 5)
-        pygame.draw.rect(surface, T.PAPYRUS, r)
-        pygame.draw.rect(surface, T.INK, r, 2)
+        surface.rect(T.PAPYRUS, r)
+        surface.rect(T.INK, r, width=2)
         x, y, w = r.x + 14, r.y + 10, r.width - 28
         # masthead
         head = T.font(26, bold=True).render(world.masthead, True, T.INK)
@@ -564,9 +595,7 @@ class PaperScreen:
 # --- the log ----------------------------------------------------------------------
 
 def draw_log(surface, app):
-    dim = pygame.Surface((T.W, T.H), pygame.SRCALPHA)
-    dim.fill((*T.SEA_DARK, 200))
-    surface.blit(dim, (0, 0))
+    surface.dim(T.SEA_DARK, 200)
     r = wrap_card(surface, (24, 100, T.W - 48, T.H - 200), 'The log')
     y = r.y + 60
     f = T.font(13)
@@ -653,9 +682,10 @@ class EpilogueScreen:
             Button((24, T.H - 24 - 56 - 66, T.W - 48, 50), 'Back to shore', app.to_title),
         ]
         score = self.outcome.score
-        save_run(app.world, {'title': self.outcome.title, 'kind': self.outcome.kind,
-                             'crises': score['crises'], 'years': score['years'],
-                             'when': time.strftime('%Y-%m-%d %H:%M')})
+        if not app.headless:        # a screenshot run is not a voyage
+            save_run(app.world, {'title': self.outcome.title, 'kind': self.outcome.kind,
+                                 'crises': score['crises'], 'years': score['years'],
+                                 'when': time.strftime('%Y-%m-%d %H:%M')})
 
     def handle(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -718,16 +748,18 @@ class EpilogueScreen:
 
 # --- entry points ------------------------------------------------------------------
 
-def run(world, library, timer=None, scale=1.0, live=False, library_path=None):
+def run(world, library, timer=None, scale=None, live=False, library_path=None):
     App(world, library, timer=timer, scale=scale, live=live,
         library_path=library_path).run()
 
 
-def screenshots(world, library, out_dir, seed=1, steps=6):
+def screenshots(world, library, out_dir, seed=1, steps=6, scale=1.0):
     """Render title, a crisis, its paper, the log, and the epilogue of
-    a scripted play-through to PNG files in `out_dir`."""
+    a scripted play-through to PNG files in `out_dir`, at `scale`
+    pixels per logical unit (2 for a picture as sharp as a Retina
+    display shows it)."""
     os.makedirs(out_dir, exist_ok=True)
-    app = App(world, library, headless=True, seed=seed, timer=45)
+    app = App(world, library, headless=True, seed=seed, timer=45, scale=scale)
     shots = []
 
     def shot(name):

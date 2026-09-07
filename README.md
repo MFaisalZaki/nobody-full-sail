@@ -38,12 +38,14 @@ venv/bin/python main.py walk                     # the same game, in the termina
 venv/bin/python -m pytest tests                  # the suite
 ```
 
-`play` opens a portrait window (`--scale 0.8` for a small screen,
-`--timer 90` for more thinking time). Keys: **1–4** answer, **Enter**
-continue, **A** show what each answer will cost (the "special adviser"
-of the original), **L** the log, **Esc** quit. `stats` says what the
-library holds; `shot DIR` renders every screen to PNG files without a
-display.
+`play` opens a portrait window as large as the screen allows, clear
+of the menu bar and the dock, and draws it at the display's full
+resolution; drag a corner to resize it (`--scale 0.8` forces a size,
+`--timer 90` gives more thinking time). Keys: **1–4** answer,
+**Enter** continue, **A** show what each answer will cost (the
+"special adviser" of the original), **L** the log, **Esc** quit.
+`stats` says what the library holds; `shot DIR` renders every screen
+to PNG files without a display (`--scale 2` for Retina-sharp ones).
 
 ## What is in the box
 

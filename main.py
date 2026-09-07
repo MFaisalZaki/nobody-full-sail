@@ -113,7 +113,7 @@ def cmd_shot(args):
     from nobody.ui.app import screenshots
     world = worlds.load(args.world)
     library = Library.load(args.out or world.library_path)
-    screenshots(world, library, args.dir, seed=args.seed)
+    screenshots(world, library, args.dir, seed=args.seed, scale=args.scale)
 
 
 def main(argv=None):
@@ -164,7 +164,10 @@ def main(argv=None):
     y = sub.add_parser('play', parents=[common], help='the game')
     y.add_argument('--timer', type=float, default=None,
                    help='seconds per decision (default: the world\'s)')
-    y.add_argument('--scale', type=float, default=1.0)
+    y.add_argument('--scale', type=float, default=None,
+                   help='the window as a fraction of the 440x880 world '
+                        '(default: as large as fits the screen, clear of '
+                        'the dock; the window can be resized either way)')
     y.add_argument('--live', action='store_true',
                    help='when a road runs out, grow the library there with '
                         'the engine (needs clingo and the planner; a '
@@ -174,6 +177,8 @@ def main(argv=None):
     z = sub.add_parser('shot', parents=[common], help='render every screen to PNG files')
     z.add_argument('dir')
     z.add_argument('--seed', type=int, default=1)
+    z.add_argument('--scale', type=float, default=1.0,
+                   help='pixels per logical unit (2 for a Retina-sharp picture)')
     z.set_defaults(fn=cmd_shot)
 
     args = p.parse_args(argv)
