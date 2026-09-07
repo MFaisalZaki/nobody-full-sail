@@ -1,6 +1,7 @@
-"""Drawing helpers: the canvas, wrapped text, buttons, the meander, the
-glyphs, the ship. Everything is primitives, so nothing here needs an
-asset."""
+"""Drawing helpers: the canvas, wrapped text, buttons — and the
+pictures, every one of them sine waves from the engine in `wave`: the
+sea, the meander, the four factions' glyphs, the ship, the eye on its
+prow, the gulls. Nothing here needs an asset."""
 
 import math
 from contextlib import contextmanager
@@ -13,6 +14,8 @@ except ImportError:                     # pragma: no cover — not every build h
     gfxdraw = None
 
 from . import theme as T
+from . import wave as W
+from .wave import Wave
 
 
 # --- the canvas -------------------------------------------------------------
@@ -193,35 +196,31 @@ def hrule(surface, x1, x2, y, color=T.INK, width=1):
 
 
 def meander(surface, rect, color=T.OCHRE, cell=12, width=2):
-    """A Greek key along the top edge of `rect`, one cell after
-    another: the border every vase has."""
+    """A Greek key along the top edge of `rect`: a square wave, as
+    Fourier drew it — the first odd harmonics, the ringing left in as
+    the brush would leave it — one battlement every cell and a half."""
     x0, y0, w, h = rect
-    n = max(1, int(w // cell))
-    s = cell
-    for i in range(n):
-        x = x0 + i * s
-        y = y0
-        # one key: a squared spiral drawn as a polyline
-        pts = [(x, y + s), (x, y), (x + s, y), (x + s, y + s * 0.66),
-               (x + s * 0.33, y + s * 0.66), (x + s * 0.33, y + s * 0.33),
-               (x + s * 0.66, y + s * 0.33)]
-        surface.lines(color, False, pts, width)
+    key = Wave.square(0.4 * h, 1.0 / (1.5 * cell), harmonics=5, K=y0 + h / 2)
+    W.Trail(key, w, 'x', (x0, 0), step=max(0.5, cell / 16)).render(surface, color, 0.0, width)
+
+
+def sea_wave(amp, wavelength, speed=1.0, row=0, y=0.0, texture=0.0):
+    """One row of the sea: a long swell, rows staggered in phase, and
+    with `texture` a quicker, lower ripple riding on it."""
+    swell = Wave(amp, 1.0 / wavelength, speed, W.TAU * 17 * row / wavelength, y)
+    if not texture:
+        return swell
+    return swell + Wave(amp * texture, 2.7 / wavelength, 1.6 * speed, 0.9 * row)
 
 
 def waves(surface, rect, color, rows=5, amp=4, wavelength=48, width=2,
-          phase=0.0):
-    """Rows of long sine waves: the sea under everything."""
+          t=0.0, speed=1.0, texture=0.0):
+    """Rows of long waves rolling at `speed`: the sea under everything."""
     x0, y0, w, h = rect
-    step = 4
     for r in range(rows):
         y = y0 + h * (r + 0.5) / rows
-        pts = []
-        x = x0
-        while x <= x0 + w:
-            pts.append((x, y + amp * math.sin((x + r * 17) / wavelength * 2 * math.pi + phase)))
-            x += step
-        if len(pts) > 1:
-            surface.lines(color, False, pts, width)
+        W.Trail(sea_wave(amp, wavelength, speed, r, y, texture), w, 'x', (x0, 0),
+                step=4).render(surface, color, t, width)
 
 
 def button(surface, rect, label, font, fill=T.TERRACOTTA, ink=T.PAPYRUS,
@@ -271,80 +270,143 @@ def badge(surface, pos, delta, font):
 
 # --- glyphs: the four factions, drawn black-figure ---------------------------
 
-def glyph(surface, name, center, size, color=T.INK):
-    cx, cy = center
+def glyph(surface, name, center, size, color=T.INK, t=0.0, motion=None):
+    """A faction's emblem, `size` across at `center`, built in its own
+    coordinates from the engine's parts and carried there (and through
+    `motion`, when it has one) by the matrix mode."""
     s = size / 2
+    at = W.chain(W.Motion(dx=center[0], dy=center[1]), motion)
     if name == 'oar':
-        # a long oar, blade down-right
-        surface.line(color, (cx - s, cy - s), (cx + s * 0.4, cy + s * 0.4), max(2, int(size / 9)))
-        surface.polygon(color, [
-            (cx + s * 0.3, cy + s * 0.2), (cx + s, cy + s * 0.55),
-            (cx + s * 0.75, cy + s), (cx + s * 0.15, cy + s * 0.55)])
+        # a long shaft, and a blade that swells and comes to a point
+        W.stroke(surface, (-s, -s), (0.35 * s, 0.35 * s), color, max(2, int(size / 9)),
+                 t=t, motion=at)
+        W.band(surface, (0.15 * s, 0.15 * s), (s, s),
+               lambda L: Wave.bulge(0.24 * s, L), color, t=t, motion=at, step=s / 6)
     elif name == 'bolt':
-        surface.polygon(color, [
-            (cx + s * 0.2, cy - s), (cx - s * 0.55, cy + s * 0.15),
-            (cx - s * 0.05, cy + s * 0.15), (cx - s * 0.3, cy + s),
-            (cx + s * 0.6, cy - s * 0.2), (cx + s * 0.1, cy - s * 0.2)])
+        # lightning, the emblem: two slanted bands, the upper widening
+        # to the notch, the lower tapering to the point — straight but
+        # for a tremor along each
+        tremor = lambda L: Wave(0.015 * s, 2.5 / L, 0.0, 0.7)
+        W.band(surface, (0.15 * s, -s), (-0.3 * s, 0.2 * s),
+               lambda L: Wave.rise(0.12 * s, L, 0.1 * s), color, t=t, motion=at,
+               step=s / 6, centre=tremor)
+        W.band(surface, (0.25 * s, -0.1 * s), (-0.3 * s, s),
+               lambda L: Wave.fall(0.14 * s, L, 0.02 * s), color, t=t, motion=at,
+               step=s / 6, centre=tremor)
     elif name == 'loom':
-        # a temple front: pediment over three columns
-        surface.polygon(color, [
-            (cx - s, cy - s * 0.35), (cx, cy - s), (cx + s, cy - s * 0.35)])
-        surface.rect(color, (cx - s, cy - s * 0.3, size, s * 0.22))
-        for k in (-0.7, 0, 0.7):
-            surface.rect(color, (cx + k * s - s * 0.12, cy - s * 0.05, s * 0.24, s * 0.9))
-        surface.rect(color, (cx - s, cy + s * 0.8, size, s * 0.2))
+        # a temple front: a pediment (a triangle wave, one peak of it)
+        # over an entablature, three columns and a step — flat waves
+        roof = Wave.triangle(0.325 * s, 1.0 / (4 * s), harmonics=4)
+        W.Ribbon(roof.scaled(-1), roof, 2 * s, 'x', (-s, -0.35 * s),
+                 step=s / 6).render(surface, color, t, 0, at)
+        W.Ribbon(Wave.flat(), 0.11 * s, 2 * s, 'x', (-s, -0.19 * s),
+                 step=2 * s).render(surface, color, t, 0, at)
+        for k in (-0.7, 0.0, 0.7):
+            W.Ribbon(Wave.flat(), 0.12 * s, 0.9 * s, 'y', (k * s, -0.05 * s),
+                     step=s).render(surface, color, t, 0, at)
+        W.Ribbon(Wave.flat(), 0.1 * s, 2 * s, 'x', (-s, 0.9 * s),
+                 step=2 * s).render(surface, color, t, 0, at)
     elif name == 'lyre':
-        # a sound-box, two arms curving up and out, a yoke, strings
+        # a sound-box (an orbit), two arms bowing out, a yoke, strings
         w = max(2, int(size / 9))
-        surface.ellipse(color, (cx - s * 0.55, cy + s * 0.25, s * 1.1, s * 0.7))
-        surface.lines(color, False, [
-            (cx - s * 0.45, cy + s * 0.35), (cx - s * 0.85, cy - s * 0.2),
-            (cx - s * 0.7, cy - s * 0.85)], w)
-        surface.lines(color, False, [
-            (cx + s * 0.45, cy + s * 0.35), (cx + s * 0.85, cy - s * 0.2),
-            (cx + s * 0.7, cy - s * 0.85)], w)
-        surface.line(color, (cx - s * 0.75, cy - s * 0.7),
-                     (cx + s * 0.75, cy - s * 0.7), w)
+        W.Orbit.ellipse((0, 0.6 * s), 0.55 * s, 0.35 * s).render(surface, color, t, 0, at)
+        W.stroke(surface, (-0.45 * s, 0.35 * s), (-0.7 * s, -0.85 * s), color, w,
+                 bend=-0.18 * s, t=t, motion=at)
+        W.stroke(surface, (0.45 * s, 0.35 * s), (0.7 * s, -0.85 * s), color, w,
+                 bend=0.18 * s, t=t, motion=at)
+        W.stroke(surface, (-0.75 * s, -0.7 * s), (0.75 * s, -0.7 * s), color, w,
+                 t=t, motion=at)
         for k in (-0.3, -0.1, 0.1, 0.3):
-            surface.line(color, (cx + k * s, cy - s * 0.7),
-                         (cx + k * s * 0.6, cy + s * 0.3), 1)
+            W.stroke(surface, (k * s, -0.7 * s), (0.6 * k * s, 0.3 * s), color, 1,
+                     t=t, motion=at)
     elif name == 'hourglass':
-        surface.polygon(color, [
-            (cx - s * 0.7, cy - s), (cx + s * 0.7, cy - s), (cx, cy),
-            (cx + s * 0.7, cy + s), (cx - s * 0.7, cy + s), (cx, cy)], 2)
+        # one ribbon whose half-width is a cosine down the height: full
+        # at the top, nothing at the waist, full (and crossed) at the foot
+        waist = Wave(0.7 * s, 1.0 / (4 * s), 0.0, math.pi / 2)
+        W.Ribbon(Wave.flat(), waist, 2 * s, 'y', (0, -s),
+                 step=s / 6).render(surface, color, t, 2, at)
     else:
-        surface.circle(color, (cx, cy), s)
+        W.Orbit.ellipse((0, 0), s, s).render(surface, color, t, 0, at)
 
 
-def ship(surface, center, size, color=T.INK, sail=T.PAPYRUS):
+# --- the ship, the eye, the gulls ----------------------------------------------
+
+class Ship:
+    """A black-figure ship, side on — hull, stern post, ram, bow post,
+    oars, sail, mast, yard, stays — built once from ribbons and
+    strokes in its own coordinates (the centre at the origin, `size`
+    across) and rendered wherever, through whatever motion. The sail
+    billows in a wind that comes and goes; the oars row, each a little
+    behind the one before."""
+
+    def __init__(self, size):
+        self.size = size
+        s = self.s = size / 2
+        L = 1.6 * s
+        # the hull: a slab with a little belly to the keel
+        self.hull = W.Ribbon(Wave.bulge(0.02 * s, L, 0.17 * s), Wave.bulge(0.03 * s, L, 0.11 * s),
+                             L, 'x', (-0.85 * s, 0), step=s / 8)
+        # the stern post, rising and curling aft; the ram, jutting
+        # forward and up to a point; a short post at the bow
+        self.stern = W.Ribbon(Wave.rise(-0.14 * s, -0.5 * s), Wave.fall(0.03 * s, -0.5 * s, 0.025 * s),
+                              -0.5 * s, 'y', (-0.85 * s, 0.12 * s), step=s / 10)
+        self.ram = W.Ribbon(Wave.rise(-0.22 * s, 0.38 * s), Wave.fall(0.1 * s, 0.38 * s, 0.012 * s),
+                            0.38 * s, 'x', (0.7 * s, 0.2 * s), step=s / 10)
+        self.bow = W.Ribbon(Wave.rise(0.06 * s, -0.28 * s), Wave.fall(0.02 * s, -0.28 * s, 0.015 * s),
+                            -0.28 * s, 'y', (0.66 * s, 0.08 * s), step=s / 10)
+        # the sail: a trapezoid whose sides bow out and whose belly
+        # fills and slackens
+        gust = Wave(0.03 * s, 0.0, 0.9, 0.0, 0.04 * s)
+        flutter = Wave(0.02 * s, 0.0, 0.9, 0.5, 0.03 * s)
+        self.sail = W.Ribbon(Wave.bulge(gust, 0.75 * s),
+                             Wave.fall(0.08 * s, 0.75 * s, 0.42 * s) + Wave.bulge(flutter, 0.75 * s),
+                             0.75 * s, 'y', (0, -1.0 * s), step=s / 8)
+        # the oars, from their tholes; and the rowing
+        self.oars = []
+        for k in range(6):
+            x = -0.6 * s + k * 0.22 * s
+            thole = (x, 0.15 * s)
+            self.oars.append((thole, (x - 0.12 * s, 0.55 * s),
+                              W.Motion(angle=Wave(0.1, 0.0, 1.6, 0.3 * k), pivot=thole)))
+
+    def render(self, canvas, center, color=T.INK, sail=T.PAPYRUS, t=0.0, motion=None, eye=None):
+        s = self.s
+        at = W.chain(W.Motion(dx=center[0], dy=center[1]), motion)
+        for part in (self.hull, self.stern, self.ram, self.bow):
+            part.render(canvas, color, t, 0, at)
+        for thole, tip, row in self.oars:
+            W.stroke(canvas, thole, tip, color, 2, t=t, motion=W.chain(row, at))
+        self.sail.render(canvas, sail, t, 0, at)
+        self.sail.render(canvas, color, t, 2, at)
+        W.stroke(canvas, (0, 0.05 * s), (0, -1.1 * s), color, 3, t=t, motion=at)      # mast
+        W.stroke(canvas, (-0.5 * s, -1.0 * s), (0.5 * s, -1.0 * s), color, 3, t=t, motion=at)  # yard
+        W.stroke(canvas, (0, -1.05 * s), (-0.8 * s, -0.05 * s), color, 1, t=t, motion=at)   # stays
+        W.stroke(canvas, (0, -1.05 * s), (0.85 * s, -0.02 * s), color, 1, t=t, motion=at)
+        if eye:
+            _eye(canvas, (0.745 * s, -0.02 * s), 0.073 * s, eye, t, at)
+
+
+def ship(surface, center, size, color=T.INK, sail=T.PAPYRUS, t=0.0, motion=None, eye=None):
     """A black-figure ship, side on: hull, ram, mast, sail, oars."""
-    cx, cy = center
-    s = size / 2
-    hull = [(cx - s, cy), (cx - s * 0.85, cy + s * 0.3), (cx + s * 0.75, cy + s * 0.3),
-            (cx + s * 1.05, cy - s * 0.05), (cx + s * 0.9, cy - s * 0.02),
-            (cx + s * 0.7, cy + s * 0.05), (cx - s * 0.8, cy + s * 0.05),
-            (cx - s * 0.95, cy - s * 0.3)]
-    surface.polygon(color, hull)
-    # oars
-    for k in range(6):
-        x = cx - s * 0.6 + k * s * 0.22
-        surface.line(color, (x, cy + s * 0.15), (x - s * 0.12, cy + s * 0.55), 2)
-    # sail, then the mast and yard over it
-    surface.polygon(sail, [
-        (cx - s * 0.5, cy - s * 1.0), (cx + s * 0.5, cy - s * 1.0),
-        (cx + s * 0.42, cy - s * 0.25), (cx - s * 0.42, cy - s * 0.25)])
-    surface.polygon(color, [
-        (cx - s * 0.5, cy - s * 1.0), (cx + s * 0.5, cy - s * 1.0),
-        (cx + s * 0.42, cy - s * 0.25), (cx - s * 0.42, cy - s * 0.25)], 2)
-    surface.line(color, (cx, cy + s * 0.05), (cx, cy - s * 1.1), 3)
-    surface.line(color, (cx - s * 0.5, cy - s * 1.0), (cx + s * 0.5, cy - s * 1.0), 3)
-    # stays
-    surface.line(color, (cx, cy - s * 1.05), (cx - s * 0.8, cy - s * 0.05), 1)
-    surface.line(color, (cx, cy - s * 1.05), (cx + s * 0.85, cy - s * 0.02), 1)
+    Ship(size).render(surface, center, color, sail, t, motion, eye)
 
 
-def eye(surface, center, size, color=T.INK):
-    """The apotropaic eye painted on a prow."""
-    cx, cy = center
-    surface.ellipse(color, (cx - size, cy - size * 0.55, size * 2, size * 1.1), 2)
-    surface.circle(color, (cx, cy), size * 0.4)
+def eye(surface, center, size, color=T.INK, t=0.0, motion=None):
+    """The apotropaic eye painted on a prow: two orbits."""
+    W.Orbit.ellipse(center, size, 0.55 * size).render(surface, color, t, 2, motion)
+    W.Orbit.ellipse(center, 0.4 * size, 0.4 * size).render(surface, color, t, 0, motion)
+
+
+_eye = eye      # `Ship.render` takes the eye's colour under that name
+
+
+def gull(surface, center, span, color=T.FOAM, t=0.0, phase=0.0, motion=None, width=1):
+    """A gull: two wings, each a bowed line flapping about the body,
+    the far wing a beat behind the near one."""
+    at = W.chain(W.Motion(dx=center[0], dy=center[1]), motion)
+    for side, lag in ((-1, 0.0), (1, 0.35)):
+        flap = W.Motion(angle=Wave(-0.45 * side, 0.0, 9.0, phase + lag))
+        bow = Wave(0.12 * span, 0.0, 9.0, phase + lag)
+        W.stroke(surface, (0, 0), (side * span / 2, -0.15 * span), color, width,
+                 bend=lambda L, bow=bow: Wave.bulge(bow, L), t=t,
+                 motion=W.chain(flap, at), step=span / 8)

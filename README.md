@@ -79,7 +79,9 @@ nobody/                    the game — needs pygame and nothing else
   library.py               the story graph and its JSON
   session.py               one game: meters, clock, crises, endings
   press.py                 the front page
-  ui/                      pygame: title, crisis, paper, log, epilogue
+  ui/                      pygame: title, crisis, paper, log, epilogue;
+                           wave.py, the drawing engine — every picture
+                           is sine waves
 worlds/odyssey/            the pack: world.py, the PDDL, library.json
                            (and the .lp rules, used only when growing)
 grow/                      OPTIONAL — growing the library with the engine

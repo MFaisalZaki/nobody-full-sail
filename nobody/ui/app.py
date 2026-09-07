@@ -19,6 +19,8 @@ import pygame
 from ..session import Session
 from . import draw as D
 from . import theme as T
+from . import wave as W
+from .wave import Wave
 from .window import open_window
 
 RUNS_FILE = os.path.join(os.path.expanduser('~'), '.nobody', 'runs.json')
@@ -87,6 +89,7 @@ class App:
         self._fitted = None
         self.fit()
         self.clock = pygame.time.Clock()
+        self.time = W.Timeline()        # the accumulator every wave is read at
         self.session = None
         self.screen = TitleScreen(self)
         self.adviser = False        # impact previews on the buttons
@@ -142,6 +145,7 @@ class App:
 
     def run(self):
         while self.running:
+            self.time.step(self.clock.tick(60) / 1000.0)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -157,12 +161,12 @@ class App:
             self.screen.draw(self.canvas)
             if self.window is not None:
                 self.window.flip()
-            self.clock.tick(60)
         pygame.quit()
 
     def frame(self):
         """Draw the current screen once, off-window (for screenshots);
         the surface drawn on."""
+        self.time.step(1 / 60)
         self.fit()
         self.screen.tick()
         self.screen.draw(self.canvas)
@@ -171,11 +175,18 @@ class App:
 
 # --- pieces every screen shares --------------------------------------------------
 
-def sea(surface, phase=0.0):
+def sea(surface, t=0.0):
+    """The deep water, still unless given the time."""
     surface.fill(T.SEA)
     x, y, w, h = surface.bounds()       # the letterbox, if any, is sea too
     D.waves(surface, (x, y, w, h), T.SEA_LIGHT, rows=max(1, round(h / 63)),
-            amp=3, wavelength=110, width=1, phase=phase)
+            amp=3, wavelength=110, width=1, t=t, speed=0.8, texture=0.2)
+
+
+def riding(swell, x, y, roll=0.2):
+    """The motion of something afloat at (x, y) on `swell`: it rises
+    with the water there and tilts with the water's slope."""
+    return W.Motion(dy=swell.fix(x), angle=swell.slope().fix(x).scaled(roll), pivot=(x, y))
 
 
 def meters(surface, app, y=14):
@@ -235,7 +246,6 @@ class TitleScreen:
 
     def __init__(self, app):
         self.app = app
-        self.t0 = time.monotonic()
         w = T.W - 80
         self.buttons = [
             Button((40, 560, w, 56), 'Take the tiller', app.new_game),
@@ -243,6 +253,16 @@ class TitleScreen:
         ]
         self.showing_how = False
         self.runs = load_runs(app.world)
+        self.ship = D.Ship(220)
+        self.swell = D.sea_wave(5, 90, 1.2, row=1, texture=0.3)   # the row the ship sits in
+        # two gulls on Lissajous paths over the masthead, nearer (and
+        # larger) when lower
+        self.gulls = [
+            (W.Orbit(Wave(90, 0.0, 0.17, 0.0), Wave(14, 0.0, 0.34, 1.0), (T.W // 2, 290)),
+             Wave(0.12, 0.0, 0.34, 1.0 + math.pi / 2, 1.0), 0.0),
+            (W.Orbit(Wave(70, 0.0, 0.13, 2.1), Wave(10, 0.0, 0.26, 0.4), (T.W // 2 - 40, 262)),
+             Wave(0.1, 0.0, 0.26, 0.4 + math.pi / 2, 0.85), 2.4),
+        ]
 
     def how(self):
         self.showing_how = not self.showing_how
@@ -269,7 +289,8 @@ class TitleScreen:
 
     def draw(self, surface):
         app, world = self.app, self.app.world
-        sea(surface, phase=(time.monotonic() - self.t0) * 0.8)
+        t = app.time.t
+        sea(surface, t)
         # the masthead
         D.meander(surface, (30, 60, T.W - 60, 14), T.OCHRE, cell=14, width=2)
         title = T.font(64, bold=True).render(world.title, True, T.PAPYRUS)
@@ -277,12 +298,15 @@ class TitleScreen:
         sub = T.font(30).render(world.subtitle.upper(), True, T.OCHRE)
         surface.blit(sub, ((T.W - sub.get_width()) // 2, 160))
         D.meander(surface, (30, 206, T.W - 60, 14), T.OCHRE, cell=14, width=2)
-        # the ship on the water
+        # the ship on the water, riding the middle wave; gulls above
+        for orbit, size, phase in self.gulls:
+            D.gull(surface, orbit.at(0, t), 14, T.FOAM, t, phase,
+                   motion=W.Motion(scale=size, pivot=orbit.at(0, t)))
         D.waves(surface, (0, 300, T.W, 200), T.FOAM, rows=3, amp=5,
-                wavelength=90, width=2,
-                phase=(time.monotonic() - self.t0) * 1.2)
-        D.ship(surface, (T.W // 2, 400), 220)
-        D.eye(surface, (T.W // 2 + 82, 398), 8, T.PAPYRUS)
+                wavelength=90, width=2, t=t, speed=1.2, texture=0.3)
+        cx = T.W // 2
+        self.ship.render(surface, (cx, 400), T.INK, T.PAPYRUS, t,
+                         riding(self.swell, cx, 400), eye=T.PAPYRUS)
         tag = T.font(16, italic=True).render('A game of nautical survival', True, T.FOAM)
         surface.blit(tag, ((T.W - tag.get_width()) // 2, 500))
         m = app.mouse() if not app.headless else (-1, -1)
@@ -347,6 +371,8 @@ class CrisisScreen:
         self.paused_at = None
         self.buttons = []
         self.showing_log = False
+        self.ship = D.Ship(150)
+        self.swell = D.sea_wave(3, 70, 0.6, row=1)
         self.layout()
 
     def layout(self):
@@ -416,6 +442,7 @@ class CrisisScreen:
 
     def draw(self, surface):
         app, session, crisis = self.app, self.session, self.crisis
+        t = app.time.t
         sea(surface)
         meters(surface, app)
         # the dateline
@@ -430,8 +457,10 @@ class CrisisScreen:
             secs = T.font(16, bold=True).render(f'{int(left):>2}s', True,
                                                 T.BAD if urgent else T.PAPYRUS)
             surface.blit(secs, (T.W - 24 - secs.get_width(), 102))
-            D.glyph(surface, 'hourglass', (T.W - 34 - secs.get_width() - 10, 112), 16,
-                    T.BAD if urgent else T.PAPYRUS)
+            glass = (T.W - 34 - secs.get_width() - 10, 112)
+            breath = W.Motion(scale=Wave(0.12, 0.0, 6.0, 0.0, 1.0), pivot=glass) if urgent else None
+            D.glyph(surface, 'hourglass', glass, 16, T.BAD if urgent else T.PAPYRUS,
+                    t, breath)
             frac = left / app.timer if app.timer else 0
             D.bar(surface, (24, 126, T.W - 48, 6), frac, 0, 1,
                   T.BAD if urgent else T.OCHRE, back=T.SEA_LIGHT, radius=3)
@@ -451,8 +480,9 @@ class CrisisScreen:
             vy = r.bottom - 96
             with surface.clip((r.x + 12, vy - 70, r.width - 24, 150)):
                 D.waves(surface, (r.x + 12, vy - 8, r.width - 24, 60), T.INK_SOFT,
-                        rows=3, amp=3, wavelength=70, width=1)
-                D.ship(surface, (r.centerx, vy), 150, T.INK, T.PAPYRUS_DK)
+                        rows=3, amp=3, wavelength=70, width=1, t=t, speed=0.6)
+                self.ship.render(surface, (r.centerx, vy), T.INK, T.PAPYRUS_DK, t,
+                                 riding(self.swell, r.centerx - (r.x + 12), vy))
             D.meander(surface, (r.x + 10, r.bottom - 20, r.width - 20, 12),
                       T.OCHRE, cell=12, width=2)
         # the answers
@@ -627,6 +657,8 @@ class ComposingScreen:
         self.t0 = time.monotonic()
         self.future = app.generator().start(app.library, self.session.at)
         self.failed = None
+        self.ship = D.Ship(90)
+        self.swell = D.sea_wave(3, 60, 2.0, row=1)
 
     def handle(self, event):
         pass
@@ -651,7 +683,8 @@ class ComposingScreen:
             self.app.screen = EpilogueScreen(self.app)
 
     def draw(self, surface):
-        sea(surface, phase=(time.monotonic() - self.t0) * 1.5)
+        t = self.app.time.t
+        sea(surface, t)
         meters(surface, self.app)
         r = wrap_card(surface, (24, 260, T.W - 48, 300), 'The Muse is composing')
         y = r.y + 64
@@ -664,9 +697,9 @@ class ComposingScreen:
         D.text(surface, f'{dt}s — usually under a minute.', (r.x + 16, y),
                T.font(14, italic=True), T.INK_SOFT, width=r.width - 32)
         D.waves(surface, (r.x + 16, r.bottom - 70, r.width - 32, 40), T.INK_SOFT,
-                rows=2, amp=3, wavelength=60, width=1,
-                phase=(time.monotonic() - self.t0) * 2)
-        D.ship(surface, (r.centerx, r.bottom - 52), 90, T.INK, T.PAPYRUS_DK)
+                rows=2, amp=3, wavelength=60, width=1, t=t, speed=2.0)
+        self.ship.render(surface, (r.centerx, r.bottom - 52), T.INK, T.PAPYRUS_DK, t,
+                         riding(self.swell, r.centerx - (r.x + 16), r.bottom - 52))
 
 
 # --- the epilogue ------------------------------------------------------------------
