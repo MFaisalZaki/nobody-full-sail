@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nobody-full-sail"
+version = "0.1.0"
+description = "Nobody: Full Sail — a No. 10-style survival game over a story space a scenario engine generated from Homer's Odyssey"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# the game plays a library already grown; pygame is all it needs
+dependencies = ["pygame-ce>=2.5"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+# growing the library — `main.py generate`, `main.py play --live` — needs the
+# scenario engine (and through it clingo and the PDDL→ASP planner). The
+# game never imports it.
+grow = ["polyscene @ git+https://github.com/MFaisalZaki/polyscene.git"]
+
+[tool.setuptools]
+packages = ["nobody", "nobody.ui", "grow"]

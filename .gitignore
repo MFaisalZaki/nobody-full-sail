@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+build/
+dist/
+worlds/*/library.json.tmp
+/shots/
+.DS_Store
