@@ -88,8 +88,8 @@ def test_the_odyssey_world_reads_whole():
     assert shout.is_offer and shout.directed == ('?who', '?whom')
     assert 'hubris' in shout.tags
     assert layer.gloss('shout-your-name',
-                       ['odysseus', 'polyphemus', 'cyclops-island']) == \
-        'shout your real name across the water'
+                       ['odysseus', 'polyphemus', 'cyclops-island']).startswith(
+        'Shout your real name across the water')
     curse = layer.schemas['lay-the-curse']
     assert curse.is_event and curse.observe == 'unwitnessed'
     assert layer.schemas['keep-watch'].foreknown == 'aeolus'

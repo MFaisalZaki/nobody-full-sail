@@ -78,6 +78,12 @@ def cmd_walk(args):
     session = Session(world, library, seed=args.seed)
     print(session.intro())
     while not session.over:
+        if session.lone() is not None:
+            page = session.take()
+            print(f'\n{world.masthead}: {page.headline}  (the only road)')
+            for line in page.lines:
+                print('  ' + line)
+            continue
         crisis = session.crisis()
         print(f'\n── {session.clock_text()} · {crisis.title} ──')
         print(crisis.context)

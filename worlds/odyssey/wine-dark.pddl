@@ -440,7 +440,7 @@
  ;; TROY — the ten years the player can also edit
  ;; ==================================================================
 
- ;; @gloss propose the horse
+ ;; @gloss Put the idea to them: a horse, hollow, left on the sand.
  ;; @tell {?who} puts the idea to them: a horse, hollow, left on the sand.
  ;; @span You proposed the horse.
  ;; @meter kleos+8 years+1
@@ -451,7 +451,7 @@
                      (not (horse-built)))
   :effect (and (horse-built)))
 
- ;; @gloss take the walls by storm
+ ;; @gloss Go at the walls in the open, and pay what walls cost.
  ;; @tell They go at the walls in the open, and the walls take their price.
  ;; @span You stormed the walls.
  ;; @meter kleos+12 crew-25 years+1
@@ -468,7 +468,7 @@
                  (when (and (crew ?hi) (rung-down ?lo ?hi))
                        (and (crew ?lo) (not (crew ?hi)))))))
 
- ;; @gloss get inside the horse
+ ;; @gloss Climb into the horse with the others and wait in the dark.
  ;; @tell They climb in and wait in the dark.
  ;; @span You waited inside the horse.
  ;; @meter years+1
@@ -480,7 +480,7 @@
                      (exists (?c - companion) (with ?c)))
   :effect (and (inside-horse)))
 
- ;; @gloss open the horse at night
+ ;; @gloss Draw the bolt at night and go down the rope into the city.
  ;; @tell The bolt goes back, and they come down the rope one at a time.
  ;; @span You opened the horse.
  ;; @meter kleos+14
@@ -491,7 +491,7 @@
                      (exists (?c - companion) (with ?c)))
   :effect (and (troy-fallen) (not (troy-standing)) (not (inside-horse))))
 
- ;; @gloss sack the city
+ ;; @gloss Take the city apart, all night and most of the morning.
  ;; @tell They take the city apart. It takes all night and most of the morning.
  ;; @span You sacked the city.
  ;; @meter kleos+6 divine-12
@@ -505,7 +505,7 @@
                      (not (city-sacked)))
   :effect (and (city-sacked)))
 
- ;; @gloss leave the temple alone
+ ;; @gloss Put a guard on the temple door, and keep him there.
  ;; @tell {?who} puts a guard on the temple door and keeps him there.
  ;; @span You spared the temple.
  ;; @meter divine+18
@@ -539,7 +539,7 @@
                      (not (temple-spared)) (not (sacrilege)))
   :effect (and (sacrilege) (wrathful ?whose) (not (favours ?whose))))
 
- ;; @gloss raise a grave
+ ;; @gloss Pile the stones for him and set his oar upright in them.
  ;; @tell They pile the stones and put his oar upright in them.
  ;; @span You raised a grave for {?whom}.
  ;; @meter divine+8
@@ -553,7 +553,7 @@
                      (not (grave-raised ?whom)))
   :effect (and (grave-raised ?whom)))
 
- ;; @gloss claim the armour
+ ;; @gloss Argue for the dead man's armour, and win it, whatever Ajax makes of that.
  ;; @tell {?who} argues for the armour, and wins the argument.
  ;; @span You claimed the armour.
  ;; @meter kleos+10 divine-6
@@ -586,7 +586,7 @@
                      (alive ?whom))
   :effect (and (not (alive ?whom)) (shade ?whom)))
 
- ;; @gloss burn something for the god
+ ;; @gloss Burn a thigh-bone wrapped in fat, and watch which way the smoke goes.
  ;; @tell A thigh-bone wrapped in fat, and the smoke goes the right way.
  ;; @span You sacrificed to {?whose}.
  ;; @meter divine+10 years+1
@@ -631,7 +631,7 @@
  ;; choice of PRICE at every stop on it. Which is the game.
  ;; ==================================================================
 
- ;; @gloss put to sea
+ ;; @gloss Put out to sea and let the coast go down behind you.
  ;; @tell They put out from {?from} and the coast goes down behind them.
  ;; @span You sailed to {?to}.
  ;; @meter years+1 ithaca-4
@@ -659,7 +659,7 @@
  ;; THE VOYAGE — Ismaros to Ogygia
  ;; ==================================================================
 
- ;; @gloss raid the town
+ ;; @gloss Take the town in an hour, and let the men keep it for three days.
  ;; @tell They take the town in an hour and will not leave for three days.
  ;; @span You raided the town.
  ;; @meter kleos+6 crew-15 years+1
@@ -676,7 +676,7 @@
                  (when (and (crew ?hi) (rung-down ?lo ?hi))
                        (and (crew ?lo) (not (crew ?hi)))))))
 
- ;; @gloss get them back aboard before dark
+ ;; @gloss Count every man back onto the ship while there is still light.
  ;; @tell {?who} counts them onto the ship while there is still light.
  ;; @span You pulled them out early.
  ;; @meter kleos-4 divine+4
@@ -704,7 +704,7 @@
                      (alive ?whom) (not (lotus-eaten ?whom)))
   :effect (and (lotus-eaten ?whom)))
 
- ;; @gloss drag them off the beach
+ ;; @gloss Drag them off the beach, weeping, and tie them under the benches.
  ;; @tell They are weeping when he ties them under the benches.
  ;; @span You dragged {?withwhom} back to the ship.
  ;; @meter kleos+4
@@ -715,7 +715,7 @@
                      (lotus-eaten ?withwhom) (not (disciplined)))
   :effect (and (not (lotus-eaten ?withwhom)) (disciplined)))
 
- ;; @gloss go up to the cave
+ ;; @gloss Go up to the cave, eat the cheese, and wait to see who owns it.
  ;; @tell There is cheese in baskets and no one at home. {?who} waits to
  ;; @tell see who owns it.
  ;; @span You went into the cave.
@@ -729,7 +729,7 @@
                      (not (blinded ?whose)))
   :effect (and (in-cave) (cave-visited) (cave-shut)))
 
- ;; @gloss take the cheese and go
+ ;; @gloss Load what cheese you can carry and be back at the oars by dusk.
  ;; @tell They load what they can carry and are back at the oars by dusk.
  ;; @span You took the cheese and left.
  ;; @meter kleos-6 divine+6
@@ -741,7 +741,7 @@
                      (exists (?c - companion) (with ?c)))
   :effect (and (not (in-cave)) (not (cave-shut)) (disciplined)))
 
- ;; @gloss put out his eye
+ ;; @gloss Sharpen the stake, heat it in the fire, and put out his eye.
  ;; @tell The stake goes in hissing. The sound he makes brings the whole
  ;; @tell island to the mouth of the cave.
  ;; @span You blinded {?whom}.
@@ -765,7 +765,7 @@
                  (when (owns-the-sea ?g)
                        (and (wrathful ?g) (not (favours ?g))))))))
 
- ;; @gloss go out under the sheep
+ ;; @gloss Go out under the rams' bellies, one man to a fleece.
  ;; @tell They go out under the rams' bellies, one man to a fleece, and he
  ;; @tell counts the backs of his own flock as they pass.
  ;; @span You got out of the cave.
@@ -777,7 +777,7 @@
                      (exists (?c - companion) (with ?c)))
   :effect (and (not (in-cave)) (not (cave-shut))))
 
- ;; @gloss tell him your name is Nobody
+ ;; @gloss Tell him your name is Nobody, and pour him more wine.
  ;; @tell "Nobody," {?who} says, and lets him have it.
  ;; @span You told him you were Nobody.
  ;; @meter kleos-2
@@ -793,7 +793,7 @@
 
  ;; The canonical piece of hubris in the whole poem, and the one the
  ;; design names as the thematic core: +kleos, and a decade of -divine.
- ;; @gloss shout your real name across the water
+ ;; @gloss Shout your real name across the water, and your father's, and your island's.
  ;; @tell {?who} cannot leave it. He shouts his name across the water, and
  ;; @tell his father's name, and the name of the island he is from.
  ;; @span You shouted your name at {?whom}.
@@ -829,7 +829,7 @@
                      (owns-the-sea ?whose) (not (curse-laid ?whom)))
   :effect (and (curse-laid ?whom) (wrathful ?whose) (not (favours ?whose))))
 
- ;; @gloss take the bag of winds
+ ;; @gloss Take the ox-hide bag from the king, and promise not to open it.
  ;; @tell The king gives him an ox-hide bag, tied with silver wire, and
  ;; @tell tells him not to open it.
  ;; @span You were given the bag of winds.
@@ -845,7 +845,7 @@
                      (not (has-bag ?what)) (not (bag-open)))
   :effect (and (has-bag ?what) (favours ?whose) (not (wrathful ?whose))))
 
- ;; @gloss stay awake and steer
+ ;; @gloss Stay awake at the tiller, nine days, with the bag at your feet.
  ;; @tell Nine days at the tiller. On the tenth, Ithaca is a smudge on the
  ;; @tell water and {?who} is still awake.
  ;; @span You kept watch over the bag.
@@ -897,7 +897,7 @@
                  (when (and (crew ?hi) (rung-down2 ?lo ?hi))
                        (and (crew ?lo) (not (crew ?hi)))))))
 
- ;; @gloss moor outside, under the rock
+ ;; @gloss Tie up outside the harbour mouth, under the rock, on your own.
  ;; @tell {?who} ties up outside the harbour mouth, the way a man does who
  ;; @tell has stopped trusting good anchorages.
  ;; @span You moored outside the harbour.
@@ -927,7 +927,7 @@
                      (not (released-by ?whose)))
   :effect (and (swine ?whom)))
 
- ;; @gloss take the herb before you go up
+ ;; @gloss Take the black-rooted herb from the stranger before you go up.
  ;; @tell Black root, white flower. Hard for mortals to dig up; not for the
  ;; @tell one who hands it over.
  ;; @span You were given the herb.
@@ -944,7 +944,7 @@
                      (gives-the-herb ?whose) (not (has-moly ?what)))
   :effect (and (has-moly ?what)))
 
- ;; @gloss make her swear and free them
+ ;; @gloss Make her swear the great oath, then make her turn them back.
  ;; @tell She swears the great oath, and the bristles go back into their skin.
  ;; @span You made her free them.
  ;; @meter kleos+6
@@ -958,7 +958,7 @@
                      (swine ?whom) (not (released-by ?whose)))
   :effect (and (released-by ?whose) (not (swine ?whom))))
 
- ;; @gloss stay the year
+ ;; @gloss Stay the year in her hall, and let nobody count it.
  ;; @tell A year goes by the way a year does when nobody is counting it.
  ;; @span You stayed a year with {?whose}.
  ;; @meter years+1 ithaca-14 kleos-6
@@ -991,7 +991,7 @@
  ;; THE DEAD — where testimony is literal
  ;; ==================================================================
 
- ;; @gloss go down and ask
+ ;; @gloss Dig the trench, pour the black blood, and go down to ask the dead.
  ;; @tell A trench, black blood, and a queue of people who used to be alive.
  ;; @span You went down to the dead.
  ;; @meter divine-6 years+1 kleos+8
@@ -1006,7 +1006,7 @@
  ;; parameter of a beat can be asked about it, and death is not always
  ;; the end of that — which is why `@testify-while` names `shade` as
  ;; well as `alive`.
- ;; @gloss question the shade
+ ;; @gloss Let the shade drink from the trench, and ask him what he knows.
  ;; @tell {?whom} drinks, and remembers who he is, and answers.
  ;; @span You questioned {?whom}.
  ;; @kind investigate
@@ -1020,7 +1020,7 @@
                      (not (questioned ?whom)))
   :effect (and (questioned ?whom)))
 
- ;; @gloss hear the prophecy
+ ;; @gloss Hear the blind man out, cattle and all, to the end.
  ;; @tell Leave the cattle alone, he says. Leave them alone and you may all
  ;; @tell get home. Touch them and you come home late, alone, on someone
  ;; @tell else's ship.
@@ -1035,7 +1035,7 @@
                      (not (prophecy-heard)))
   :effect (and (prophecy-heard)))
 
- ;; @gloss come back up
+ ;; @gloss Go back up the way you came, and do not look behind you.
  ;; @tell He goes back up the same way, and does not look behind him.
  ;; @span You came back from the dead.
  ;; @meter years+1
@@ -1049,7 +1049,7 @@
  ;; THE STRAIT — every option here is a price
  ;; ==================================================================
 
- ;; @gloss wax in every ear
+ ;; @gloss Go down the benches with the wax, and miss no one.
  ;; @tell He goes down the benches with the wax and does not miss anyone.
  ;; @span You stopped their ears.
  ;; @meter kleos-4
@@ -1063,7 +1063,7 @@
                      (not (ears-stopped)))
   :effect (and (ears-stopped)))
 
- ;; @gloss have them tie you to the mast
+ ;; @gloss Have them tie you to the mast, and hear the song yourself.
  ;; @tell He wants to hear it. That is the whole of the reason.
  ;; @span You had yourself tied to the mast.
  ;; @meter kleos+10
@@ -1075,7 +1075,7 @@
                      (exists (?c - companion) (with ?c)))
   :effect (and (bound-to-mast) (heard-sirens)))
 
- ;; @gloss ithaca the course past the rock
+ ;; @gloss Hold the course under the rock, and pay her six men for it.
  ;; @tell Six of them, one for each head, still calling his name.
  ;; @span You went past the rock and lost six men.
  ;; @meter crew-14 kleos+4
@@ -1094,7 +1094,7 @@
                  (when (and (crew ?hi) (rung-down ?lo ?hi))
                        (and (crew ?lo) (not (crew ?hi)))))))
 
- ;; @gloss steer for the whirlpool instead
+ ;; @gloss Put the bow at the whirlpool, where the water goes down.
  ;; @tell He puts the bow at the other side, where the water goes down
  ;; @tell instead of where the teeth are.
  ;; @span You steered for the whirlpool.
@@ -1118,7 +1118,7 @@
  ;; THRINACIA — the design's own worked example
  ;; ==================================================================
 
- ;; @gloss put in at the island
+ ;; @gloss Put in at the island, where the cattle graze on the headland.
  ;; @tell The cattle are on the headland, and they are not anyone's.
  ;; @span You landed on {?where}.
  ;; @meter years+1
@@ -1130,7 +1130,7 @@
                      (not (provisions)) (not (provisions-spent)))
   :effect (and (provisions)))
 
- ;; @gloss sail past without landing
+ ;; @gloss Row past the island without landing, cattle or no cattle.
  ;; @tell They can see the cattle from the water. He does not put in.
  ;; @span You sailed past the island.
  ;; @meter kleos+4 divine+10
@@ -1169,7 +1169,7 @@
  ;; needs the discipline the player bought somewhere earlier — which is
  ;; the longest causal link in the domain paying off — and without it a
  ;; crew that would not touch the cattle simply starves where it stands.
- ;; @gloss wait it out
+ ;; @gloss Wait out the calm on the beach, and touch no cattle.
  ;; @tell Nobody touches the cattle. They sit on the beach and wait, and
  ;; @tell on the eighth day there is a little wind out of the north.
  ;; @span You waited out the calm.
@@ -1255,7 +1255,7 @@
  ;; drifting in them. A man on a keel does not choose a heading: the sea
  ;; takes him where the sea takes him, which in this poem is the nymph's
  ;; island, and everything he has not done by then he will not do.
- ;; @gloss drift
+ ;; @gloss Hold on to the keel and drift, nine days, wherever the sea takes you.
  ;; @tell Nine days on the keel of his own ship, and on the tenth a beach.
  ;; @tell He comes up it on his hands and knees and sleeps under the leaves.
  ;; @span You drifted to {?to}.
@@ -1293,7 +1293,7 @@
                  (when (and (ithaca-hold ?hi) (rung-down2 ?lo ?hi))
                        (and (ithaca-hold ?lo) (not (ithaca-hold ?hi)))))))
 
- ;; @gloss refuse to be a god
+ ;; @gloss Refuse the one thing nobody gets, and ask for your wife instead.
  ;; @tell She offers him the one thing nobody gets. He says he wants to
  ;; @tell see his wife, who will die.
  ;; @span You refused to become immortal.
@@ -1310,7 +1310,7 @@
                  (when (and (kleos ?have) (rung-up ?up ?have))
                        (and (kleos ?up) (not (kleos ?have)))))))
 
- ;; @gloss take it
+ ;; @gloss Take it. Stop counting the years, and everything else.
  ;; @tell He takes it. The years stop counting and so does everything else.
  ;; @span You became immortal.
  ;; @meter kleos-20 ithaca-40
@@ -1324,7 +1324,7 @@
                      (not (took-immortality)))
   :effect (and (took-immortality) (not (offered-immortality))))
 
- ;; @gloss build a raft
+ ;; @gloss Fell twenty trees and build a raft, with a sail she cuts herself.
  ;; @tell Twenty trees, an auger, and a sail she cuts herself.
  ;; @span You built a raft.
  ;; @meter years+1 kleos+4
@@ -1336,7 +1336,7 @@
                      (not (took-immortality)))
   :effect (and (raft-built) (not (held-by ?whose))))
 
- ;; @gloss put the raft in the water
+ ;; @gloss Put the raft in the water and steer for home, alone.
  ;; @tell Seventeen days on his own timber, and on the eighteenth the storm
  ;; @tell takes the raft apart under him.
  ;; @span You sailed the raft to {?to}.
@@ -1352,7 +1352,7 @@
  ;; SCHERIA — the last court before home
  ;; ==================================================================
 
- ;; @gloss go to her with nothing on
+ ;; @gloss Come out of the bushes, salt and all, and ask the girl for help.
  ;; @tell He comes out of the bushes covered in salt and asks her, very
  ;; @tell carefully, whether she is a goddess.
  ;; @span You supplicated {?whom}.
@@ -1371,7 +1371,7 @@
  ;; The one place in the poem where kleos is manufactured rather than
  ;; earned: the story of the voyage, told well, in a hall that will
  ;; repeat it.
- ;; @gloss tell them the whole thing
+ ;; @gloss Tell them the whole thing, from the horse to the raft.
  ;; @tell He tells it from the horse to the raft, and they do not
  ;; @tell interrupt him once.
  ;; @span You told them your story.
@@ -1388,7 +1388,7 @@
                  (when (and (kleos ?have) (rung-up ?up ?have))
                        (and (kleos ?up) (not (kleos ?have)))))))
 
- ;; @gloss let them take you home
+ ;; @gloss Let their ship carry you home, asleep, and leave you on the sand.
  ;; @tell He is asleep when they carry him ashore, and asleep when they
  ;; @tell leave.
  ;; @span They carried you home.
@@ -1439,7 +1439,7 @@
                  (when (and (ithaca-hold ?hi) (rung-down ?lo ?hi))
                        (and (ithaca-hold ?lo) (not (ithaca-hold ?hi)))))))
 
- ;; @gloss come ashore as a beggar
+ ;; @gloss Let the goddess put twenty years on you, and come ashore a beggar.
  ;; @tell She puts twenty years on him in about four seconds.
  ;; @span You landed disguised.
  ;; @meter divine+6
@@ -1458,7 +1458,7 @@
                      (not (suitors-dead)) (not (home)))
   :effect (and (disguised)))
 
- ;; @gloss walk in as yourself
+ ;; @gloss Walk up the road to your own house with your own face on.
  ;; @tell He walks up the road to his own house with his own face on.
  ;; @span You walked in openly.
  ;; @meter kleos+8 ithaca-20
@@ -1473,7 +1473,7 @@
 
  ;; Object provenance, in fiction: a thing carries the beats it was a
  ;; parameter of, and this one has carried its beat for forty years.
- ;; @gloss let the old woman wash your feet
+ ;; @gloss Let the old woman wash your feet, scar and all.
  ;; @tell She has his foot in her hands when she finds the ridge above the
  ;; @tell knee, and the basin goes over.
  ;; @span The scar was recognised.
@@ -1489,7 +1489,7 @@
                      (not (recognised-by ?whom)))
   :effect (and (recognised-by ?whom) (scar-shown)))
 
- ;; @gloss tell your son
+ ;; @gloss Straighten up in the swineherd's hut and tell your son who you are.
  ;; @tell The beggar straightens up in the swineherd's hut and stops
  ;; @tell being a beggar.
  ;; @span You revealed yourself to {?whom}.
@@ -1504,7 +1504,7 @@
                      (kin ?whom) (alive ?whom) (not (recognised-by ?whom)))
   :effect (and (recognised-by ?whom)))
 
- ;; @gloss string the bow
+ ;; @gloss Turn the bow over twice, and string it sitting down.
  ;; @tell He turns it over twice, the way a man checks an instrument, and
  ;; @tell strings it sitting down.
  ;; @span You strung the bow.
@@ -1517,7 +1517,7 @@
                      (not (suitors-dead)))
   :effect (and (bow-strung)))
 
- ;; @gloss kill them all
+ ;; @gloss Kill them all, and wash the hall down afterwards.
  ;; @tell It takes the rest of the afternoon and the hall has to be
  ;; @tell washed down afterwards.
  ;; @span You killed the suitors.
@@ -1536,7 +1536,7 @@
                  (when (and (ithaca-hold ?have) (rung-up ?up ?have))
                        (and (ithaca-hold ?up) (not (ithaca-hold ?have)))))))
 
- ;; @gloss let them go
+ ;; @gloss Put the bow down, and let them go.
  ;; @tell He puts the bow down. It is the strangest thing he has ever done.
  ;; @span You spared the suitors.
  ;; @meter divine+16 kleos-12
@@ -1551,7 +1551,7 @@
                      (not (suitors-dead)) (not (suitors-spared)))
   :effect (and (suitors-spared)))
 
- ;; @gloss make peace
+ ;; @gloss Let the goddess stop the fighting in the road, with one sentence.
  ;; @tell She stops the fighting in the road with one sentence.
  ;; @span {?whose} made the peace.
  ;; @meter divine+10 ithaca+10
@@ -1569,7 +1569,7 @@
                        (and (ithaca-hold ?up) (not (ithaca-hold ?have)))))))
 
  ;; The goal, and the thing the whole apparatus is pointed at.
- ;; @gloss go up to her
+ ;; @gloss Go up to her, and tell her about the bed.
  ;; @tell She asks him to move the bed. He tells her why he cannot, and
  ;; @tell that is the end of the argument.
  ;; @span You came home.

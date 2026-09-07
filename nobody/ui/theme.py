@@ -53,6 +53,13 @@ def set_scale(k):
         _fonts.clear()
 
 
+def forget():
+    """Drop every opened font: the fonts belong to a pygame session,
+    and a new one (after `pygame.quit`) must not draw with the old
+    session's."""
+    _fonts.clear()
+
+
 def scale():
     return _k
 

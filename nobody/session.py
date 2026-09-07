@@ -51,6 +51,13 @@ class Epilogue:
 
 
 class Session:
+    """A crisis is a board with something to decide on it. A board
+    with one answer and no move of the world's is not one: if the
+    pack calls that answer quiet (a passage: putting to sea,
+    drifting), the story takes it and the paper reports it in the
+    margin of the page before; otherwise it is `lone`, and `take`
+    plays it as a page of its own — the scene is seen, the paper
+    printed, and nothing is pretended to be decided."""
 
     #: what every faction loses when the clock runs out on a decision
     DITHER = 5
@@ -155,12 +162,31 @@ class Session:
 
     # --- playing ----------------------------------------------------------
 
-    def choose(self, index):
+    def lone(self):
+        """The one answer on the board, where there is one and the
+        world has no move: the only road on, not a decision. None
+        when there is a crisis (or nothing at all) to face."""
+        if self.over:
+            return None
+        options, world = self.options()
+        if len(options) == 1 and options[0].beat and not world:
+            return options[0]
+        return None
+
+    def take(self):
+        """Take the only road: play the lone answer as a page of its
+        own, counted as no crisis."""
+        assert self.lone() is not None, 'there is a decision to make here'
+        return self.choose(0, crisis=False)
+
+    def choose(self, index, crisis=True):
         """Answer the crisis with option `index`. Returns the page."""
         assert not self.over, 'the game is over'
         options, world = self.options()
         option = options[index]
-        self.crises += 1
+        forced = not crisis
+        if crisis:
+            self.crises += 1
         if option.kind == 'wait':
             # the world's own beat leads the page: it is what happened
             name, params, to = self.random.choice(world)
@@ -172,7 +198,7 @@ class Session:
         self._asides = []
         self._settle(asides=self._asides)
         page = press.compose(self.world, self._dateline(beat), beat, deltas,
-                             asides=self._asides)
+                             asides=self._asides, forced=forced)
         self.pages.append(page)
         self._page = page
         self._judge()
@@ -259,22 +285,30 @@ class Session:
     _asides = ()
 
     def _settle(self, asides):
-        """Play the world's own beats until a node with a decision on
-        it, an ending, or a leaf; collects them into `asides`. Returns
-        None (the page is composed by the caller)."""
+        """Play on until a board with a decision on it, an ending, or
+        a leaf: the world's own beats where nobody decides, and the
+        hero's where his is the only road and the world (`quiet`)
+        says it is a passage, not a scene. Collects them into
+        `asides` as ((name, params), deltas, own). Returns None (the
+        page is composed by the caller)."""
         self._asides = asides
         while not self.over:
             node = self.node
             if node.fate:
                 break
             options, world = self.options(node)
-            if any(o.beat for o in options):
+            hero = [o for o in options if o.beat]
+            if hero and (world or len(hero) > 1
+                         or not self.world.quiet(hero[0].beat[0], hero[0].beat[1])):
                 break
-            if not world:
+            if hero:
+                (name, params), to = hero[0].beat, hero[0].to
+            elif world:
+                name, params, to = self.random.choice(world)
+            else:
                 break
-            name, params, to = self.random.choice(world)
             deltas = self._apply((name, params), to)
-            asides.append(((name, params), deltas))
+            asides.append(((name, params), deltas, bool(hero)))
             self.at = to
         return None
 
@@ -337,3 +371,66 @@ class Session:
     def log(self):
         """Every issue of the paper so far, oldest first."""
         return list(self.pages)
+
+    # --- the road ---------------------------------------------------------
+
+    def road(self):
+        """The road taken, decision by decision, with the roads not
+        taken beside each: a list of Steps, one per page, in order."""
+        steps, j = [], 0
+        history = self.history
+        for page in self.pages:
+            # the page's beat is the next hero-or-world beat in the history
+            while j < len(history) and history[j][0] != page.beat:
+                j += 1
+            if j >= len(history):
+                break
+            beat, deltas, node = history[j]
+            j += 1
+            options, world = self.options(self.library.nodes[node])
+            chosen = next((o for o in options if o.beat == beat), None)
+            if chosen is None:
+                chosen = next((o for o in options if o.kind == 'wait'), None)
+            roads = []
+            for o in options:
+                if o is chosen:
+                    continue
+                reach = self.library.reach(o.to) if o.to is not None else None
+                roads.append(Road(o.label, o.kind, reach))
+            to = self.library.nodes[node].kid(beat[0], beat[1])
+            steps.append(Step(page.dateline, node, beat,
+                              chosen.label if chosen else self.layer.gloss(*beat),
+                              page.dithered, deltas, roads,
+                              self.library.reach(to) if to is not None else None,
+                              [(head, own) for head, _, _, own in page.asides],
+                              forced=page.forced))
+        return steps
+
+
+class Road:
+    """A road not taken: its label, its kind, and what lay down it —
+    (roads, endings, beats), or None for the world's own move."""
+
+    def __init__(self, label, kind, reach):
+        self.label, self.kind, self.reach = label, kind, reach
+
+
+class Step:
+    """One decision on the road: where it was made, what was chosen
+    (or what the world did when the clock ran out), what it cost, the
+    roads not taken, what lay down the one taken, and what followed
+    before the next decision — [(headline, own)], the world's beats
+    and (own) the hero's only roads."""
+
+    def __init__(self, dateline, node, beat, label, dithered, deltas, roads, reach, asides,
+                 forced=False):
+        self.dateline = dateline
+        self.forced = forced        # the only road from there: nothing was decided
+        self.node = node
+        self.beat = beat
+        self.label = label
+        self.dithered = dithered
+        self.deltas = deltas
+        self.roads = roads
+        self.reach = reach
+        self.asides = asides

@@ -203,6 +203,18 @@ class World:
         """The option of doing nothing, where the world has a move."""
         return 'Do nothing. See what happens.'
 
+    def wait_hint(self):
+        """The small line under that option: what its colour means."""
+        return 'green: the world makes the next move, not you'
+
+    def quiet(self, name, values):
+        """Whether a beat of the hero's, when it is the ONLY road from
+        a board (one answer, and the world has no move), is taken
+        without stopping: the story plays it and the paper reports
+        it, and the next crisis is one with something to decide. By
+        default nothing is quiet: a pack names its passages."""
+        return False
+
     def dithered_headline(self):
         return 'NOTHING DECIDED; EVERYONE NOTICES'
 

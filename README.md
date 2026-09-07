@@ -17,7 +17,8 @@ You are Odysseus. A crisis lands every scene, drawn: the island you
 are on and what stands on it, the crew as so many men on the beach,
 the ship or the raft or the wreckage, the sky as the gods' mood. You
 have 45 seconds to answer it; every answer pleases somebody and costs
-somebody else:
+somebody else, and the answer under the pointer says what it does and
+what it will cost:
 
 | faction | what it is |
 |---|---|
@@ -44,11 +45,28 @@ venv/bin/python -m pytest tests                  # the suite
 `play` opens a portrait window as large as the screen allows, clear
 of the menu bar and the dock, and draws it at the display's full
 resolution; drag a corner to resize it (`--scale 0.8` forces a size,
-`--timer 90` gives more thinking time). Keys: **1–4** answer,
+`--timer 90` gives more thinking time). Every answer is a sentence of
+what you would be doing, in the poem's own voice; the green one is
+the world's move, not yours. Keys: **1–4** answer, **↑ ↓** read an
+answer before taking it (its passage, and what it costs whom),
 **Enter** continue, **A** show what each answer will cost (the
-"special adviser" of the original), **L** the log, **Esc** quit.
-`stats` says what the library holds; `shot DIR` renders every screen
-to PNG files without a display (`--scale 2` for Retina-sharp ones).
+"special adviser" of the original), **L** the log, **Esc** quit. When
+it is over, **the road you took** charts every decision with the
+roads not taken beside it; on the title, **R** charts **the roads you
+have taken** over every voyage so far, merged into one tree, the
+latest in red (the record lives in `~/.nobody/runs.json`). `stats`
+says what the library holds; `shot DIR` renders every screen to PNG
+files without a display (`--scale 2` for Retina-sharp ones).
+
+A crisis is a board with something to decide on it. Where the library
+offers one answer and the world has no move — putting to sea, the
+raft, drifting to the nymph's island, the court that carries you home
+— the story takes the passage and the paper reports it under *And
+then*; the pack names these (`QUIET` in `worlds/odyssey/world.py`).
+A lone answer it does not name (the descent to the dead, the nymph's
+offer, the bow) is a board worth seeing, so it gets a front page of
+its own, marked *the only road from there*, and counts as no crisis —
+but never a menu of one.
 
 ## What is in the box
 
@@ -81,6 +99,7 @@ nobody/                    the game — needs pygame and nothing else
   world.py                 World: a pack's files, factions and voice
   library.py               the story graph and its JSON
   session.py               one game: meters, clock, crises, endings
+  voyages.py               the record of voyages, and their chart
   press.py                 the front page
   ui/                      pygame: title, crisis, paper, log, epilogue;
                            wave.py, the drawing engine — every picture

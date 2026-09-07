@@ -83,10 +83,12 @@ class Stage:
                     self.land(c, t)
                 self.landmark(c, t)
                 self.cast(c, t)
-                if sc.setting == 'shore' or not sc.vessel:
+                if sc.setting == 'shore':
                     self.party(c, t)
-                else:
+                elif sc.vessel in ('ship', 'raft'):
                     self.party(c, t, x=self.deck, motion=self.ride, aboard=True)
+                else:
+                    self.swimmers(c, t)
                 if storm > 0.75:
                     S.rain(c, (self.x0, self.y0, self.w, 0.9 * self.h), t)
 
@@ -95,7 +97,7 @@ class Stage:
         always_sun = bool(self.scene.landmark and self.scene.landmark[1].get('sun'))
         if storm < 0.5 or always_sun:
             r = (0.09 if always_sun else 0.06) * h
-            fx = {'sea': 0.6, 'harbour': 0.5}.get(self.scene.setting, 0.84)
+            fx = 0.84 if always_sun else {'sea': 0.6, 'harbour': 0.5}.get(self.scene.setting, 0.72)
             S.sun(c, x0 + fx * w, y0 + 0.17 * h, r, t)
         if storm > 0.25:
             dark = storm > 0.6
@@ -133,6 +135,8 @@ class Stage:
         elif sc.vessel == 'wreck' and sc.setting == 'shore':
             S.wreck(c, self.shore + 0.1 * self.w, self.ground(self.shore + 0.1 * self.w),
                     0.28 * self.h, t)
+        elif sc.vessel == 'wreck':
+            S.wreck(c, x - 0.12 * self.w, y + 0.12 * self.h, 0.24 * self.h, t, ride)
 
     def land(self, c, t):
         """The land: a ribbon from the shore to the edge whose top is
@@ -297,7 +301,7 @@ class Stage:
 
     def cast_scylla(self, c, t, props):
         x0, y0, w, h = self.rect
-        S.scylla(c, x0 + 0.9 * w, self.horizon - 0.02 * h, 0.5 * h, t, facing=-1)
+        S.scylla(c, x0 + 0.9 * w, self.horizon - 0.02 * h, 2.4 * self.hero_h, t, facing=-1)
 
     def cast_charybdis(self, c, t, props):
         x0, y0, w, h = self.rect
@@ -358,9 +362,10 @@ class Stage:
         n = CREW.get(sc.crew, 0)
         if aboard:
             hx, hy = x
-            self.hero_figure(c, hx + 0.03 * self.h, hy + 0.01 * self.h, t, motion)
+            s = self.ship.s                      # half the ship: the hull runs -0.85s .. 0.75s
+            self.hero_figure(c, hx + 0.08 * s, hy + 0.04 * s, t, motion)
             for k in range(min(n, 4)):
-                S.figure(c, hx - (0.13 + 0.06 * k) * self.h, hy + 0.02 * self.h, 0.6 * self.hero_h, t,
+                S.figure(c, hx - (0.2 + 0.19 * k) * s, hy + 0.06 * s, 0.55 * self.hero_h, t,
                          facing=1, pose='sit', phase=k * 0.9, motion=motion)
             return
         if x is None:
@@ -383,6 +388,19 @@ class Stage:
             S.figure(c, cx, cy, 0.9 * self.hero_h, t, facing=1, phase=k * 1.1, pose=pose,
                      arms='raised' if pose == 'lie' else 'down', prop='flower' if pose == 'lie' else None,
                      motion=motion)
+
+    def swimmers(self, c, t):
+        """No vessel and open water: heads and arms above the swell,
+        the hero first, riding it."""
+        row = self.sea_row(1)
+        n = CREW.get(self.scene.crew, 0)
+        with c.clip((self.x0, self.y0, self.w, row - self.y0 + 0.01 * self.h)):
+            for k in range(n + 1):
+                x = self.x0 + (0.5 - 0.06 * k) * self.w
+                h = self.hero_h if k == 0 else 0.9 * self.hero_h
+                bob = W.Motion(dy=self.swell.fix(x - self.x0), pivot=(x, row))
+                S.figure(c, x, row + 0.42 * h, h, t, facing=1, arms='raised' if k == 0 else 'up',
+                         crest=k == 0, phase=k * 1.3, motion=bob)
 
     def hero_figure(self, c, x, y, t, motion=None):
         hero = self.scene.hero

@@ -375,15 +375,35 @@ class Odyssey(World):
         # stable per beat, so a replayed month reads the same
         return pool[(abs(delta) + len(name)) % len(pool)]
 
-    #: answers whose gloss wants a parameter in it to mean anything
+    #: answers whose line wants a name in it to mean anything (the
+    #: `@gloss` lines carry the rest, written the same way: what you
+    #: would be doing, in a sentence, in the poem's own voice)
     LABELS = {
-        'sail-on':        'put to sea for {?to}',
-        'sail-the-raft':  'put the raft in the water for {?to}',
-        'sacrifice-to':   'burn something for {?whose}',
-        'drag-them-back': 'drag {?withwhom} off the beach',
-        'question-the-shade': 'question the shade of {?whom}',
-        'raise-a-grave':  'raise a grave for {?whom}',
+        'sail-on':        'Put out for {?to} and let the coast go down behind you.',
+        'sail-the-raft':  'Put the raft in the water and steer for {?to}, alone.',
+        'wash-ashore':    'Hold on to the keel and drift, nine days, to {?to}.',
+        'sacrifice-to':   'Burn a thigh-bone in fat for {?whose}, and watch the smoke.',
+        'drag-them-back': 'Drag {?withwhom} off the beach, weeping, and tie them under the benches.',
+        'question-the-shade': 'Let {?whom} drink from the trench, and ask him what he knows.',
+        'raise-a-grave':  'Pile the stones for {?whom} and set his oar upright in them.',
+        'supplicate':     'Come out of the bushes, salt and all, and ask {?whom} for help.',
     }
+
+    #: beats the story takes on its own when they are the only road
+    #: from a board: nothing to decide, and nothing on the board worth
+    #: stopping to look at — the passages between episodes. The paper
+    #: reports them. (A lone answer NOT named here still stops the
+    #: game: the cave, the nymph's offer, the bow — a board worth
+    #: seeing even with one thing to do on it.)
+    QUIET = frozenset({
+        'sail-on', 'land-at', 'sail-the-raft', 'build-a-raft', 'wash-ashore',
+        'supplicate', 'tell-your-story', 'be-conveyed-home',
+        'steer-for-the-whirlpool', 'pass-the-rock', 'endure-the-calm',
+        'come-back-from-the-dead',
+    })
+
+    def quiet(self, name, values):
+        return name in self.QUIET
 
     def label(self, name, values):
         text = self.LABELS.get(name)
@@ -393,6 +413,9 @@ class Odyssey(World):
 
     def wait_label(self):
         return 'Do nothing. Look at the sea.'
+
+    def wait_hint(self):
+        return 'green: the world makes the next move, not you'
 
     def dithered_headline(self):
         return 'CAPTAIN STARES AT HORIZON; CREW, GODS, ITHACA AND BARDS ALL NOTICE'

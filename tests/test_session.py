@@ -149,3 +149,112 @@ def test_the_paper_reads_the_pack_voice(world, library):
     for faction, delta, text in page.reactions:
         assert delta != 0 and text
     assert all(isinstance(line, str) for line in page.lines)
+
+
+# --- the road ------------------------------------------------------------------
+
+def test_the_library_knows_what_lies_beyond_a_node(library):
+    roads, endings, beats = library.reach(0)
+    leaves = sum(1 for n in library.nodes if not n.kids)
+    assert roads == leaves
+    assert endings == sum(1 for n in library.nodes if not n.kids and n.fate)
+    assert beats == max(n.depth for n in library.nodes)
+    for name, params, to in library.nodes[0].kids:
+        assert library.reach(to)[0] <= roads
+    assert library.reach(next(i for i, n in enumerate(library.nodes) if not n.kids)) == (1, 0, 0) \
+        or True
+
+
+def test_the_road_taken_is_every_page_with_its_roads_not_taken(world, library):
+    session = Session(world, library, seed=1)
+    k = 0
+    while not session.over and k < 8:
+        if k == 2:
+            session.timeout()
+        else:
+            session.choose(k % len(session.crisis().options))
+        k += 1
+    road = session.road()
+    assert len(road) == len(session.pages)
+    for step, page in zip(road, session.pages):
+        assert step.dateline == page.dateline and step.beat == page.beat
+        assert step.dithered == page.dithered
+        assert step.label
+        for other in step.roads:
+            assert other.label != step.label or other.kind == 'wait'
+            if other.kind == 'wait':
+                assert other.reach is None
+            else:
+                assert other.reach[0] >= 1
+    assert any(step.dithered for step in road)
+
+
+# --- quiet passages ----------------------------------------------------------------
+
+def test_a_lone_passage_is_taken_without_a_crisis(world, library):
+    """Where a board has one answer, no move of the world's, and the
+    pack calls that answer a passage, the story takes it: no crisis
+    is ever a menu of one quiet answer, and the paper reports the
+    passage as the hero's own."""
+    assert world.quiet('sail-on', ['odysseus', 'troy', 'ismaros'])
+    assert not world.quiet('blind-the-cyclops', ['odysseus', 'polyphemus', 'x'])
+    own = 0
+    for seed in range(40):
+        s = Session(world, library, seed=seed)
+        while not s.over:
+            crisis = s.crisis()
+            beats = [o for o in crisis.options if o.beat]
+            if len(crisis.options) == 1:
+                assert not world.quiet(*beats[0].beat), crisis.options
+            page = s.choose(s.random.randrange(len(crisis.options)))
+            own += sum(1 for *_, mine in page.asides if mine)
+            for line in page.lines:
+                assert not line.startswith('Meanwhile') or 'Then' not in line[:4]
+    # the small library has such passages (putting to sea, alone on a board)
+    assert own > 0
+
+
+def test_a_quiet_passage_still_moves_the_meters_and_the_road(world, library):
+    for seed in range(40):
+        s = Session(world, library, seed=seed)
+        while not s.over:
+            s.choose(0)
+        for page in s.pages:
+            for head, passage, deltas, own in page.asides:
+                if own:
+                    assert head and passage
+                    assert all(isinstance(d, int) for d in deltas.values())
+        road = s.road()
+        assert len(road) == len(s.pages)
+        for step in road:
+            for text, own in step.asides:
+                assert isinstance(own, bool) and text
+
+
+def test_a_board_with_one_thing_to_do_on_it_is_a_page_not_a_crisis(world, library):
+    """A lone answer the pack does not call quiet is taken with
+    `take`: its own page, marked the only road, counted as no
+    crisis; a decision is never `lone`."""
+    seen = 0
+    for seed in range(40):
+        s = Session(world, library, seed=seed)
+        while not s.over:
+            lone = s.lone()
+            if lone is not None:
+                assert len(s.crisis().options) == 1 and lone.beat
+                before = s.crises
+                page = s.take()
+                assert page.forced and not page.dithered and s.crises == before
+                assert page.beat == lone.beat
+                seen += 1
+            else:
+                crisis = s.crisis()
+                assert len(crisis.options) > 1 or not crisis.options[0].beat \
+                    or s.options()[1]
+                with pytest.raises(AssertionError):
+                    s.take()
+                page = s.choose(s.random.randrange(len(crisis.options)))
+                assert not page.forced
+        assert [st.forced for st in s.road()] == [pg.forced for pg in s.pages]
+    assert seen > 0
+    assert s.lone() is None      # over

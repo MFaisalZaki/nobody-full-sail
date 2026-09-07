@@ -246,6 +246,39 @@ def button(surface, rect, label, font, fill=T.TERRACOTTA, ink=T.PAPYRUS,
     return r
 
 
+def choice(surface, rect, number, label, font, fill=T.TERRACOTTA, ink=T.PAPYRUS,
+           hover=False, radius=12, border=T.INK, small=None, max_lines=2):
+    """An answer to a crisis: a numbered button whose label is a
+    sentence, set left after the number, two lines of it at most,
+    with a small line under it when there is one; returns its rect."""
+    r = pygame.Rect(rect)
+    shadow_rect(surface, r, radius, 3)
+    surface.rect(T.TERRA_DK if hover else fill, r, border_radius=radius)
+    surface.rect(border, r, width=2, border_radius=radius)
+    x = r.x + 34
+    w = r.width - 34 - 12
+    lines = wrap(font, label, w)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(' ,;') + '…'
+    total = len(lines) * (font.get_height() + 1)
+    tiny = T.font(11, italic=True)
+    if small:
+        total += tiny.get_height() + 1
+    y = r.y + (r.height - total) // 2
+    for line in lines:
+        surface.blit(font.render(line, True, ink), (x, y))
+        y += font.get_height() + 1
+    if small:
+        surface.blit(tiny.render(small, True, ink), (x, y + 1))
+    # the number, in a ring at the left
+    cx, cy = r.x + 17, r.centery
+    surface.circle(ink, (cx, cy), 9, width=1)
+    num = T.font(11, bold=True).render(str(number), True, ink)
+    surface.blit(num, (cx - num.get_width() // 2, cy - num.get_height() // 2))
+    return r
+
+
 def bar(surface, rect, value, lo, hi, fill, back=T.SEA_LIGHT, radius=6):
     r = pygame.Rect(rect)
     surface.rect(back, r, border_radius=radius)
@@ -369,19 +402,27 @@ class Ship:
             self.oars.append((thole, (x - 0.12 * s, 0.55 * s),
                               W.Motion(angle=Wave(0.1, 0.0, 1.6, 0.3 * k), pivot=thole)))
 
-    def render(self, canvas, center, color=T.INK, sail=T.PAPYRUS, t=0.0, motion=None, eye=None):
+    def render(self, canvas, center, color=T.INK, sail=T.PAPYRUS, t=0.0, motion=None, eye=None,
+               rim=None):
+        """With `rim`, every part is first drawn a little larger in that
+        colour: a chalk line round a black ship on dark water."""
         s = self.s
         at = W.chain(W.Motion(dx=center[0], dy=center[1]), motion)
-        for part in (self.hull, self.stern, self.ram, self.bow):
-            part.render(canvas, color, t, 0, at)
-        for thole, tip, row in self.oars:
-            W.stroke(canvas, thole, tip, color, 2, t=t, motion=W.chain(row, at))
-        self.sail.render(canvas, sail, t, 0, at)
-        self.sail.render(canvas, color, t, 2, at)
-        W.stroke(canvas, (0, 0.05 * s), (0, -1.1 * s), color, 3, t=t, motion=at)      # mast
-        W.stroke(canvas, (-0.5 * s, -1.0 * s), (0.5 * s, -1.0 * s), color, 3, t=t, motion=at)  # yard
-        W.stroke(canvas, (0, -1.05 * s), (-0.8 * s, -0.05 * s), color, 1, t=t, motion=at)   # stays
-        W.stroke(canvas, (0, -1.05 * s), (0.85 * s, -0.02 * s), color, 1, t=t, motion=at)
+        passes = ((rim, 4, color), (color, 0, sail)) if rim else ((color, 0, sail),)
+        for ink, extra, cloth in passes:
+            for part in (self.hull, self.stern, self.ram, self.bow):
+                part.render(canvas, ink, t, extra, at)
+            for thole, tip, row in self.oars:
+                W.stroke(canvas, thole, tip, ink, 2 + extra, t=t, motion=W.chain(row, at))
+            if extra:
+                self.sail.render(canvas, ink, t, 2 + extra, at)
+            else:
+                self.sail.render(canvas, cloth, t, 0, at)
+                self.sail.render(canvas, ink, t, 2, at)
+            W.stroke(canvas, (0, 0.05 * s), (0, -1.1 * s), ink, 3 + extra, t=t, motion=at)      # mast
+            W.stroke(canvas, (-0.5 * s, -1.0 * s), (0.5 * s, -1.0 * s), ink, 3 + extra, t=t, motion=at)  # yard
+            W.stroke(canvas, (0, -1.05 * s), (-0.8 * s, -0.05 * s), ink, 1 + extra, t=t, motion=at)   # stays
+            W.stroke(canvas, (0, -1.05 * s), (0.85 * s, -0.02 * s), ink, 1 + extra, t=t, motion=at)
         if eye:
             _eye(canvas, (0.745 * s, -0.02 * s), 0.073 * s, eye, t, at)
 

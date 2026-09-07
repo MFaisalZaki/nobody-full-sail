@@ -79,6 +79,31 @@ class Library:
         return [i for i, n in enumerate(self.nodes)
                 if n.open and (max_depth is None or n.depth < max_depth)]
 
+    def reach(self, at):
+        """What lies beyond node `at`: (roads, endings, beats) — how
+        many roads run on from it (its leaves), how many of them close
+        on an ending, and how many beats the longest of them runs.
+        The library is a tree, so this is one walk; results are kept."""
+        cache = self.__dict__.setdefault('_reach', {})
+        if at in cache:
+            return cache[at]
+        stack, order = [at], []
+        while stack:
+            i = stack.pop()
+            order.append(i)
+            stack.extend(to for _, _, to in self.nodes[i].kids if to not in cache)
+        for i in reversed(order):
+            node = self.nodes[i]
+            if not node.kids:
+                cache[i] = (1, 1 if node.fate else 0, 0)
+                continue
+            roads = endings = beats = 0
+            for _, _, to in node.kids:
+                r, e, b = cache[to]
+                roads, endings, beats = roads + r, endings + e, max(beats, b + 1)
+            cache[i] = (roads, endings, beats)
+        return cache[at]
+
     def stats(self):
         """A few numbers about the graph."""
         edges = sum(len(n.kids) for n in self.nodes)

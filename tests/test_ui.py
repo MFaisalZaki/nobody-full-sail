@@ -92,4 +92,67 @@ def test_the_screens_render_at_twice_the_size():
     assert frame.get_at((2 * 30, 2 * 400))[:3] == T.PAPYRUS
     # the sea, in the margin
     assert frame.get_at((2 * 4, 2 * 400))[:3] in (T.SEA, T.SEA_LIGHT)
+    # the paper after an answer carries the board's picture
+    app.screen.answer(0)
+    app.frame()
+    assert app.screen.stage is not None and app.screen.stage.scene.place
+    pygame.quit()
+
+
+def test_an_answer_can_be_read_before_it_is_taken_and_the_road_charted():
+    from nobody.ui.app import EpilogueScreen, RoadScreen
+    world = worlds.load(ODYSSEY)
+    library = Library.load(SMALL)
+    app = App(world, library, headless=True, seed=1, timer=45, scale=1.0)
+    app.new_game()
+    app.screen.focus = 0
+    frame = app.frame()
+    # the description card sits over the foot of the crisis card, in papyrus
+    assert frame.get_at((60, app.screen.card_bottom - 40))[:3] == T.PAPYRUS
+    while not app.session.over:
+        app.session.timeout()
+    app.screen = EpilogueScreen(app)
+    app.frame()
+    app.screen.road()
+    assert isinstance(app.screen, RoadScreen)
+    app.screen.scroll = 10 ** 6
+    frame = app.frame()
+    assert app.screen.scroll >= 0 and len(app.screen.steps) == len(app.session.pages)
+    app.screen.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    assert isinstance(app.screen, EpilogueScreen)
+    pygame.quit()
+
+
+def test_every_voyage_is_charted_on_the_title():
+    from nobody import voyages
+    from nobody.session import Session
+    from nobody.ui.app import ChartScreen, TitleScreen
+    world = worlds.load(ODYSSEY)
+    library = Library.load(SMALL)
+    app = App(world, library, headless=True, seed=1, timer=45, scale=1.0)
+    runs = []
+    for seed in range(3):
+        s = Session(world, library, seed=seed)
+        while not s.over:
+            s.choose(s.random.randrange(len(s.crisis().options)))
+        runs.append(voyages.record(s, when='x'))
+    runs.insert(0, {'kind': 'lost', 'title': 'an old record, no road'})
+    title = app.screen
+    assert isinstance(title, TitleScreen)
+    app.screen = ChartScreen(app, runs, back=title)
+    assert app.screen.uncharted == 1
+    assert len(app.screen.rows) >= len(runs[-1]['road'])
+    app.screen.scroll = 10 ** 6
+    frame = app.frame()
+    assert app.screen.scroll >= 0
+    # the trunk's first dot, in papyrus or (the latest voyage) terracotta
+    x, y = app.screen.lane_x(0), app.screen.top + 8 + app.screen.ROW // 2 - int(app.screen.scroll)
+    if app.screen.top <= y <= app.screen.bottom:
+        assert frame.get_at((x, y))[:3] in (T.PAPYRUS, T.TERRACOTTA)
+    app.screen.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    assert app.screen is title
+    # an empty record draws its invitation, not a chart
+    app.screen = ChartScreen(app, [], back=title)
+    app.frame()
+    assert app.screen.rows == [] and app.screen.lanes == 0
     pygame.quit()
