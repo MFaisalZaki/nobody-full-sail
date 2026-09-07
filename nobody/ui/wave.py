@@ -172,6 +172,24 @@ class Wave:
                                n * speed, n * phase, K if n == 1 else 0.0)
                            for k, n in enumerate(range(1, 2 * harmonics, 2))])
 
+    @classmethod
+    def sawtooth(cls, A, f, harmonics=6, speed=0.0, phase=0.0, K=0.0):
+        """A sawtooth from every harmonic: a slow climb and a drop —
+        a thing that falls and is back at the top."""
+        return Composite(*[cls((-1) ** (n + 1) * 2 * A / (math.pi * n), n * f,
+                               n * speed, n * phase, K if n == 1 else 0.0)
+                           for n in range(1, harmonics + 1)])
+
+    @classmethod
+    def bounce(cls, A, f, harmonics=4, speed=0.0, phase=0.0, K=0.0):
+        """|sin|, as its cosine series: A at the peaks, never below
+        K — a ball that bounces, a coin that spins."""
+        parts = [cls(0.0, 0.0, 0.0, 0.0, K + 2 * A / math.pi)]
+        for k in range(1, harmonics + 1):
+            parts.append(cls(-4 * A / (math.pi * (4 * k * k - 1)), 2 * k * f,
+                             2 * k * speed, 2 * k * phase + math.pi / 2))
+        return Composite(*parts)
+
 
 class Composite:
     """Waves summed: Fourier synthesis. Behaves as a wave."""
@@ -209,26 +227,30 @@ class Composite:
 
 class Motion:
     """A translation, a rotation and a scale about a pivot, each a
-    number or a wave of time: the transform an asset goes through
-    rather than a shape it is."""
+    number or a wave of time — and a mirror, for a thing that faces
+    the other way: the transform an asset goes through rather than a
+    shape it is."""
 
-    def __init__(self, dx=0.0, dy=0.0, angle=0.0, scale=1.0, pivot=(0.0, 0.0)):
+    def __init__(self, dx=0.0, dy=0.0, angle=0.0, scale=1.0, pivot=(0.0, 0.0),
+                 mirror=False):
         self.dx, self.dy, self.angle, self.scale = dx, dy, angle, scale
-        self.pivot = pivot
+        self.pivot, self.mirror = pivot, mirror
 
     def matrix(self, t=0.0):
-        """(a, b, e, f): x' = a·x - b·y + e, y' = b·x + a·y + f."""
+        """(a, b, c, d, e, f): x' = a·x + b·y + e, y' = c·x + d·y + f."""
         dx = _value(self.dx, 0.0, t)
         dy = _value(self.dy, 0.0, t)
         angle = _value(self.angle, 0.0, t)
         scale = _value(self.scale, 0.0, t)
-        a, b = scale * math.cos(angle), scale * math.sin(angle)
+        m = -1.0 if self.mirror else 1.0
+        cos, sin = math.cos(angle), math.sin(angle)
+        a, b, c, d = scale * m * cos, -scale * sin, scale * m * sin, scale * cos
         px, py = self.pivot
-        return a, b, px + dx - a * px + b * py, py + dy - b * px - a * py
+        return a, b, c, d, px + dx - a * px - b * py, py + dy - c * px - d * py
 
     def apply(self, points, t=0.0):
-        a, b, e, f = self.matrix(t)
-        return [(a * x - b * y + e, b * x + a * y + f) for x, y in points]
+        a, b, c, d, e, f = self.matrix(t)
+        return [(a * x + b * y + e, c * x + d * y + f) for x, y in points]
 
     def point(self, p, t=0.0):
         return self.apply([p], t)[0]
@@ -342,10 +364,12 @@ class Orbit:
         self.buffer = move([(cx + x, cy + y) for x, y in zip(xs, ys)], motion, t)
         return self.buffer
 
-    def render(self, canvas, color, t=0.0, width=0, motion=None):
+    def render(self, canvas, color, t=0.0, width=0, motion=None, closed=True):
         pts = self.vectors(t, motion)
-        if len(pts) > 2:
+        if len(pts) > 2 and closed:
             canvas.polygon(color, pts, width)
+        elif len(pts) > 1:
+            canvas.lines(color, False, pts, max(1, width))
 
 
 # --- lines between points: the matrix mode at work ---------------------------------

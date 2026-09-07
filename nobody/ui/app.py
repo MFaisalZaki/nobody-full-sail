@@ -18,6 +18,7 @@ import pygame
 
 from ..session import Session
 from . import draw as D
+from . import scene as SC
 from . import theme as T
 from . import wave as W
 from .wave import Wave
@@ -371,8 +372,8 @@ class CrisisScreen:
         self.paused_at = None
         self.buttons = []
         self.showing_log = False
-        self.ship = D.Ship(150)
-        self.swell = D.sea_wave(3, 70, 0.6, row=1)
+        self.scene = app.world.scene(self.session.atoms, self.session.opening)
+        self.stage = None
         self.layout()
 
     def layout(self):
@@ -394,6 +395,7 @@ class CrisisScreen:
             self.buttons.append(Button((24, y + i * (h + gap), T.W - 48, h),
                                        o.label, i, small))
         self.card_bottom = y - 14
+        self.stage = None       # the card's shape may have changed
 
     def seconds_left(self):
         if self.deadline is None:
@@ -464,27 +466,29 @@ class CrisisScreen:
             frac = left / app.timer if app.timer else 0
             D.bar(surface, (24, 126, T.W - 48, 6), frac, 0, 1,
                   T.BAD if urgent else T.OCHRE, back=T.SEA_LIGHT, radius=3)
-        # the card
+        # the card: the board, drawn — the same state the meters and
+        # the caption describe, looked at — over a caption of what a
+        # picture cannot carry (names, mostly)
         r = wrap_card(surface, (24, 142, T.W - 48, self.card_bottom - 142), crisis.title)
         y = r.y + 26 + D.text_height(T.font(15, bold=True), crisis.title.upper(), r.width - 32, max_lines=2) + 6
         D.hrule(surface, r.x + 16, r.right - 16, y, T.INK_SOFT)
-        y += 10
-        body = T.font(16)
-        room = r.bottom - y - 12
-        max_lines = max(1, room // (body.get_height() + 3))
-        used = D.text(surface, crisis.context, (r.x + 16, y), body, T.INK,
-                      width=r.width - 32, line_gap=3, max_lines=max_lines)
-        # a vignette where the card has room: the ship on the water,
-        # painted the way a cup would carry it
-        if r.bottom - (y + used) > 190:
-            vy = r.bottom - 96
-            with surface.clip((r.x + 12, vy - 70, r.width - 24, 150)):
-                D.waves(surface, (r.x + 12, vy - 8, r.width - 24, 60), T.INK_SOFT,
-                        rows=3, amp=3, wavelength=70, width=1, t=t, speed=0.6)
-                self.ship.render(surface, (r.centerx, vy), T.INK, T.PAPYRUS_DK, t,
-                                 riding(self.swell, r.centerx - (r.x + 12), vy))
-            D.meander(surface, (r.x + 10, r.bottom - 20, r.width - 20, 12),
-                      T.OCHRE, cell=12, width=2)
+        y += 8
+        legend = T.font(13)
+        lines = min(3, len(D.wrap(legend, self.scene.caption, r.width - 32)))
+        caption_h = lines * (legend.get_height() + 2)
+        stage = (r.x + 12, y, r.width - 24, r.bottom - 26 - caption_h - y)
+        if self.stage is None or self.stage.rect != stage:
+            self.stage = SC.Stage(self.scene, stage)
+        mood = 1.0
+        if app.world.sky:
+            value, lo, hi = session.bar(app.world.sky)
+            mood = 0.0 if hi == lo else (value - lo) / (hi - lo)
+        self.stage.draw(surface, t, mood)
+        D.hrule(surface, r.x + 16, r.right - 16, stage[1] + stage[3] + 2, T.INK_SOFT)
+        D.text(surface, self.scene.caption, (r.x + 16, stage[1] + stage[3] + 8), legend,
+               T.INK_SOFT, width=r.width - 32, max_lines=3)
+        D.meander(surface, (r.x + 10, r.bottom - 20, r.width - 20, 12),
+                  T.OCHRE, cell=12, width=2)
         # the answers
         m = app.mouse() if not app.headless else (-1, -1)
         for i, b in enumerate(self.buttons):

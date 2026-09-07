@@ -15,7 +15,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
-from nobody.world import Faction, World   # noqa: E402
+from nobody.world import Faction, Scene, World   # noqa: E402
 
 
 class Odyssey(World):
@@ -32,6 +32,7 @@ class Odyssey(World):
     timer = 45
     masthead = 'THE DAILY OMEN'
     tagline = 'All the news the gods see fit to send · Est. 1184 BC'
+    sky = 'divine'
     benchmark = {'label': 'Odysseus', 'years': 10,
                  'blurb': 'The poem itself: ten years at sea, home alone, '
                           'every man lost, and known by his wife.'}
@@ -122,6 +123,102 @@ class Odyssey(World):
                 text = layer.reads[name].format(*map(layer.display, args))
                 lines.append(text[0].upper() + text[1:] + '.')
         return '\n'.join(lines)
+
+    # --- the board, drawn -------------------------------------------------
+
+    def scene(self, atoms, opening=()):
+        """The board as a picture: which island, what stands on it,
+        who is there and in what state, the crew, the vessel."""
+        holds = {}
+        for a in atoms:
+            holds.setdefault(a[0], []).append(a[1:])
+        has = holds.keys()
+        place = next((a[1] for a in holds.get('at', ()) if a and a[0] == self.layer.hero), '')
+        band = next(iter(holds.get('crew', [('full',)])))[0]
+        vessel = ('ship' if 'ship-whole' in has else 'raft' if 'raft-built' in has
+                  else 'wreck' if 'wreckage' in has else None)
+        # the caption carries what the picture cannot: the place, the
+        # names, the residue — not the crew or the ship, which are drawn
+        drawn = set(self.CREW.values()) | {'The ship is whole.', 'There is a raft.',
+                                           'You have no ship.'}
+        caption = '\n'.join(line for line in self.describe(atoms, opening).split('\n')
+                            if line not in drawn)
+        scene = Scene(place=place, crew=band, vessel=vessel, marks=set(has), caption=caption)
+        hero, cast = scene.hero, scene.cast
+        if 'held-by' in has:
+            hero['kept'] = True
+        if 'bound-to-mast' in has:
+            hero['bound'] = True
+        if 'disguised' in has:
+            hero['disguised'] = True
+        if place == 'troy':
+            scene.landmark = ('walls', {'fallen': 'troy-fallen' in has,
+                                        'horse': 'horse-built' in has,
+                                        'inside': 'inside-horse' in has})
+            if 'inside-horse' in has:
+                hero['inside'] = 'horse'
+        elif place == 'ismaros':
+            scene.landmark = ('town', {'raided': 'town-raided' in has})
+            cast.append(('spearmen', {'n': 3}))
+        elif place == 'lotus-land':
+            scene.landmark = ('lotus', {})
+            cast.append(('lotus-eaters', {'n': 3}))
+            if 'lotus-eaten' in has:
+                hero['crew-pose'] = 'lie'
+        elif place == 'cyclops-island':
+            inside = 'in-cave' in has
+            scene.setting = 'cave' if inside else 'shore'
+            scene.landmark = ('cave', {'shut': 'cave-shut' in has, 'inside': inside})
+            cast.append(('cyclops', {'blind': 'blinded' in has, 'inside': inside}))
+            if inside:
+                hero['inside'] = 'cave'
+        elif place == 'aeolia':
+            scene.landmark = ('bronze-wall', {})
+            cast.append(('aeolus', {'bag': 'has-bag' not in has and 'bag-open' not in has}))
+            cast.append(('winds', {'loose': 'bag-open' in has}))
+        elif place == 'telepylos':
+            scene.setting = 'harbour'
+            scene.landmark = ('cliffs', {})
+            cast.append(('giants', {'n': 2}))
+        elif place == 'aiaia':
+            scene.setting = 'hall'
+            scene.landmark = ('hall', {'smoke': True})
+            cast.append(('circe', {'cup': 'swine' not in has}))
+            if 'swine' in has:
+                cast.append(('swine', {'n': 3}))
+                hero['crew-pose'] = 'none'      # they are the pigs
+        elif place == 'the-dead':
+            scene.setting = 'underworld'
+            scene.landmark = ('trench', {})
+            cast.append(('shades', {'n': 5, 'prophet': 'prophecy-heard' not in has}))
+            hero['below'] = True
+        elif place == 'strait':
+            scene.setting = 'sea'
+            scene.landmark = ('rocks', {})
+            cast.append(('sirens', {'singing': 'heard-sirens' not in has}))
+            cast.append(('scylla', {}))
+            cast.append(('charybdis', {}))
+        elif place == 'thrinacia':
+            scene.landmark = ('headland', {'sun': True})
+            cast.append(('cattle', {'n': 4, 'eaten': 'cattle-eaten' in has}))
+        elif place == 'ogygia':
+            scene.landmark = ('tree', {})
+            cast.append(('calypso', {}))
+            if 'held-by' in has:
+                hero['pose'], hero['facing'] = 'sit', -1
+        elif place == 'scheria':
+            scene.setting = 'hall'
+            scene.landmark = ('court', {})
+            cast.append(('alcinous', {}))
+            cast.append(('nausicaa', {'ball': 'supplicated' not in has}))
+        elif place == 'ithaca':
+            scene.setting = 'hall'
+            scene.landmark = ('home', {})
+            cast.append(('suitors', {'n': 4, 'dead': 'suitors-dead' in has}))
+            cast.append(('penelope', {}))
+            if 'bow-strung' in has:
+                hero['prop'] = 'bow'
+        return scene
 
     # --- the newspaper ----------------------------------------------------
 

@@ -13,8 +13,11 @@ one of them sound; the game only lets you walk them.
 |---|---|---|
 | ![title](docs/screenshots/title.png) | ![crisis](docs/screenshots/crisis.png) | ![the front page](docs/screenshots/paper.png) |
 
-You are Odysseus. A crisis lands every scene; you have 45 seconds to
-answer it; every answer pleases somebody and costs somebody else:
+You are Odysseus. A crisis lands every scene, drawn: the island you
+are on and what stands on it, the crew as so many men on the beach,
+the ship or the raft or the wreckage, the sky as the gods' mood. You
+have 45 seconds to answer it; every answer pleases somebody and costs
+somebody else:
 
 | faction | what it is |
 |---|---|
@@ -81,7 +84,8 @@ nobody/                    the game — needs pygame and nothing else
   press.py                 the front page
   ui/                      pygame: title, crisis, paper, log, epilogue;
                            wave.py, the drawing engine — every picture
-                           is sine waves
+                           is sine waves; sprites.py the bestiary and
+                           scene.py the stage a board is drawn on
 worlds/odyssey/            the pack: world.py, the PDDL, library.json
                            (and the .lp rules, used only when growing)
 grow/                      OPTIONAL — growing the library with the engine

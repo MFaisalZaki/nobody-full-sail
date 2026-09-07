@@ -13,6 +13,7 @@ SEA_LIGHT  = (34, 52, 92)
 FOAM       = (232, 238, 244)
 PAPYRUS    = (242, 232, 207)     # the card, the newspaper
 PAPYRUS_DK = (222, 208, 176)
+DUNE       = (204, 189, 156)     # a line drawn on the land
 INK        = (26, 24, 22)        # black-figure black
 INK_SOFT   = (70, 62, 54)
 TERRACOTTA = (196, 98, 56)
@@ -23,6 +24,7 @@ WINE       = (110, 34, 48)
 GOOD       = (96, 150, 90)
 BAD        = (186, 60, 52)
 DIM        = (130, 138, 150)
+GHOST      = (158, 148, 128)     # shades, smoke, wind: ink that has faded
 
 #: logical size — a phone held upright; the window scales it
 W, H = 440, 880

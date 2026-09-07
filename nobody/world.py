@@ -19,8 +19,27 @@ needs the engine: a library already grown plays on pygame alone.
 
 import importlib.util
 import os
+from dataclasses import dataclass, field
 
 from . import directives
+
+
+@dataclass
+class Scene:
+    """What a board looks like, for the UI to draw — data, so that a
+    pack needs no pygame. A stage (`setting`), a landmark on it, a
+    cast of residents each with its props, the crew's band, the
+    vessel if any, the hero's state, the residue marks a sprite may
+    react to, and the board's reading as a caption."""
+    place: str = ''
+    setting: str = 'shore'          # 'shore' | 'sea' | 'harbour' | 'cave' | 'hall' | 'underworld'
+    landmark: tuple = None          # (sprite, props)
+    cast: list = field(default_factory=list)      # [(sprite, props), …]
+    crew: str = 'full'              # 'full' | 'thinned' | 'remnant' | 'alone'
+    vessel: str = 'ship'            # 'ship' | 'raft' | 'wreck' | None
+    hero: dict = field(default_factory=dict)      # 'inside', 'bound', 'kept', 'disguised', 'below', 'facing', 'pose'
+    marks: set = field(default_factory=set)
+    caption: str = ''
 
 
 class Faction:
@@ -77,6 +96,8 @@ class World:
     tagline = ''
     #: the benchmark the score is read against, if the world has one
     benchmark = None
+    #: the meter the sky is read from (its floor is a storm), if any
+    sky = None
 
     def __init__(self, root):
         self.root = root
@@ -124,9 +145,9 @@ class World:
         lines = []
         hero = layer.hero
         if layer.place and hero:
-            fluent, idx = layer.place
-            place = next((a[idx] for a in atoms
-                          if a[0] == fluent and len(a) > idx
+            fluent, idx = layer.place          # the place is the idx-th argument
+            place = next((a[idx + 1] for a in atoms
+                          if a[0] == fluent and len(a) > idx + 1
                           and a[1] == hero), None)
             if place:
                 head = layer.display(place)
@@ -138,6 +159,17 @@ class World:
                 text = layer.reads[name].format(*map(layer.display, a[1:]))
                 lines.append(text[0].upper() + text[1:] + '.')
         return '\n'.join(lines)
+
+    def scene(self, atoms, opening=()):
+        """What the board looks like: the base reading places the hero
+        on a shore with the ship; a pack knows its own islands."""
+        layer = self.layer
+        place = None
+        if layer.place and layer.hero:
+            fluent, idx = layer.place          # the place is the idx-th argument
+            place = next((a[idx + 1] for a in atoms
+                          if a[0] == fluent and len(a) > idx + 1 and a[1] == layer.hero), None)
+        return Scene(place=place or '', caption=self.describe(atoms, opening))
 
     def episode(self, tags):
         """The crisis title for a beat with these tags: the first tag
