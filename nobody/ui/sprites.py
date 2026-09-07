@@ -29,57 +29,181 @@ def at(x, y, facing=1, motion=None, *before):
 
 # --- people --------------------------------------------------------------------
 
-#: where the hands go, as (near hand, far hand) in units of height
+#: the skeleton, in units of height — feet at (0, 0), up negative: where
+#: the hips, the waist, the shoulders and the middle of the head are
+HIP, WAIST, SHOULDER, HEAD = -0.46, -0.58, -0.75, -0.905
+#: a bone of the arm, upper or lower, in units of height
+ARM = 0.19
+
+#: where the hands reach for, as (near hand, far hand) in units of height
 ARMS = {
-    'down':   ((0.15, -0.42), (-0.13, -0.44)),
-    'raised': ((0.3, -1.02), (-0.13, -0.44)),
-    'out':    ((0.36, -0.68), (-0.12, -0.44)),
-    'up':     ((0.3, -1.08), (-0.3, -1.08)),
-    'cup':    ((0.24, -0.82), (-0.13, -0.44)),
-    'throw':  ((-0.32, -1.05), (0.15, -0.42)),
+    'down':   ((0.17, -0.38), (-0.15, -0.38)),
+    'raised': ((0.30, -1.02), (-0.15, -0.38)),
+    'out':    ((0.42, -0.66), (-0.15, -0.38)),
+    'up':     ((0.30, -1.08), (-0.30, -1.08)),
+    'cup':    ((0.26, -0.84), (-0.15, -0.38)),
+    'throw':  ((-0.32, -1.05), (0.17, -0.38)),
 }
 
 
+def _joint(root, mark, bone):
+    """Two bones of length `bone` from `root` toward `mark`: where the
+    joint between them goes — bent the way an elbow hangs, downward,
+    and backward when it is a toss-up — and where the end of the second
+    bone lands (short of the mark, when the mark is out of reach)."""
+    (rx, ry), (mx, my) = root, mark
+    dx, dy = mx - rx, my - ry
+    d = math.hypot(dx, dy)
+    if d == 0:
+        return (rx, ry + bone), (rx, ry + 2 * bone)
+    if d >= 2 * bone:
+        k = 2 * bone / d
+        mx, my = rx + dx * k, ry + dy * k
+        return ((rx + mx) / 2, (ry + my) / 2), (mx, my)
+    r = math.sqrt(bone * bone - (d / 2) ** 2)
+    cx, cy = rx + dx / 2, ry + dy / 2
+    px, py = -dy / d * r, dx / d * r
+    a, b = (cx + px, cy + py), (cx - px, cy - py)
+    return (a if (a[1], -a[0]) > (b[1], -b[0]) else b), (mx, my)
+
+
+def _arm(c, h, shoulder, mark, color, t, m):
+    """An arm from `shoulder` reaching for `mark`: an upper arm that
+    swells, a forearm that tapers to the wrist, a hand. Returns where
+    the hand is."""
+    elbow, hand = _joint(shoulder, mark, ARM * h)
+    W.band(c, shoulder, elbow, lambda L: Wave.bulge(0.012 * h, L, 0.028 * h), color, t=t, motion=m)
+    W.Orbit.ellipse(elbow, 0.026 * h, 0.026 * h).render(c, color, t, 0, m)
+    W.band(c, elbow, hand, lambda L: Wave.fall(0.012 * h, L, 0.016 * h), color, t=t, motion=m)
+    W.Orbit.ellipse(hand, 0.026 * h, 0.021 * h).render(c, color, t, 0, m)
+    return hand
+
+
+def _leg(c, h, hip, knee, ankle, heel, toe, color, t, m):
+    """A leg: a thigh tapering to the knee, a calf that swells, a foot
+    from the heel to a pointed toe."""
+    W.band(c, hip, knee, lambda L: Wave.fall(0.022 * h, L, 0.032 * h), color, t=t, motion=m)
+    W.Orbit.ellipse(knee, 0.03 * h, 0.03 * h).render(c, color, t, 0, m)
+    W.band(c, knee, ankle, lambda L: Wave.bulge(0.014 * h, L, 0.02 * h), color, t=t, motion=m)
+    W.band(c, heel, toe, lambda L: Wave.fall(0.012 * h, L, 0.005 * h), color, t=t, motion=m)
+
+
+def _head(c, h, crown, t, color, eye=T.PAPYRUS, beard=False, hair=False, crest=False,
+          fair=False, m=None):
+    """A head in profile facing +x, its middle at `crown`, `h` the
+    height of whoever it belongs to: a skull, a nose that juts, an
+    eye; a pointed beard, long hair down the back, a helmet with a
+    plume when asked. `fair` paints the face in the eye's colour and
+    lines it in ink — the vases' way of drawing a woman."""
+    cx, cy = crown
+    face, line = (eye, color) if fair and eye else (color, None)
+    nose = lambda L: Wave.fall(0.028 * h, L, 0.004 * h)
+    bridge, tip = (cx + 0.05 * h, cy - 0.006 * h), (cx + 0.115 * h, cy + 0.012 * h)
+    if hair:                    # long, bound at the nape, down the back
+        W.band(c, (cx - 0.03 * h, cy - 0.04 * h), (cx - 0.09 * h, cy + 0.26 * h),
+               lambda L: Wave.fall(0.02 * h, L, 0.025 * h), color, t=t, motion=m)
+    skull = W.Orbit.ellipse((cx, cy), 0.072 * h, 0.078 * h)
+    skull.render(c, face, t, 0, m)
+    W.band(c, bridge, tip, nose, face, t=t, motion=m)
+    if line:
+        skull.render(c, line, t, 1, m)
+        W.band(c, bridge, tip, nose, line, width=1, t=t, motion=m)
+        # the hair over the crown, framing the face
+        W.band(c, (cx - 0.078 * h, cy + 0.03 * h), (cx + 0.062 * h, cy - 0.062 * h),
+               lambda L: Wave.bulge(0.03 * h, L, 0.012 * h), color, t=t, motion=m,
+               centre=lambda L: Wave.bulge(-0.035 * h, L))
+    if beard:
+        W.band(c, (cx + 0.035 * h, cy + 0.05 * h), (cx + 0.075 * h, cy + 0.15 * h),
+               lambda L: Wave.fall(0.03 * h, L, 0.006 * h), color, t=t, motion=m)
+    if crest:                   # a Corinthian helmet: the dome, the nose guard, the plume
+        W.Orbit.ellipse((cx - 0.006 * h, cy - 0.014 * h), 0.084 * h, 0.088 * h).render(
+            c, color, t, 0, m)
+        W.band(c, (cx + 0.06 * h, cy - 0.04 * h), (cx + 0.078 * h, cy + 0.055 * h), 0.017 * h,
+               color, t=t, motion=m)
+        W.band(c, (cx - 0.19 * h, cy), (cx + 0.1 * h, cy - 0.135 * h),
+               lambda L: Wave.bulge(0.042 * h, L, 0.005 * h), color, t=t, motion=m,
+               centre=lambda L: Wave.bulge(-0.05 * h, L))
+    if eye:
+        W.Orbit.ellipse((cx + 0.036 * h, cy - 0.012 * h), 0.022 * h, 0.014 * h).render(
+            c, color if fair else eye, t, 0, m)
+
+
 def figure(c, x, y, h, t, color=T.INK, facing=1, phase=0.0, pose='stand', arms='down',
-           crest=False, prop=None, walk=0.0, gown=False, lean=0.0, motion=None):
-    """A person, feet at (x, y), `h` tall: legs, a tunic (or a gown to
-    the ground), a head, two arms and what the near hand holds.
-    Poses: stand, sit, lie. The body breathes; a walk swings the legs."""
+           crest=False, prop=None, walk=0.0, gown=False, lean=0.0, motion=None,
+           eye=T.PAPYRUS, beard=None, fair=False):
+    """A person as the vases draw one, feet at (x, y), `h` tall: a
+    profile head on a frontal chest, broad at the shoulders and narrow
+    at the waist, legs with thighs and calves, arms with elbows, a
+    belted tunic to the thigh (or a gown to the ground) with its folds
+    scratched in, and what the near hand holds. Men are bearded unless
+    told otherwise; `fair` gives the face the vases' white. Poses:
+    stand, sit (on a stool), lie. The body breathes; a walk swings the
+    legs; `lean` bends the back. Returns the placement, for whatever
+    else belongs to the figure."""
     breathe = W.Motion(scale=Wave(0.012, 0.0, 1.3, phase, 1.0))
     lie = W.Motion(angle=math.pi / 2 - 0.25) if pose == 'lie' else None
     m = at(x, y, facing, motion, breathe, lie)
-    w = max(1.0, 0.07 * h)
-    if pose == 'sit':
-        hips, neck, head = (0.0, -0.42 * h), (0.0, -0.74 * h), (0.0, -0.85 * h)
-        W.stroke(c, hips, (0.26 * h, -0.42 * h), color, w, t=t, motion=m)
-        W.stroke(c, (0.26 * h, -0.42 * h), (0.28 * h, 0.0), color, w, t=t, motion=m)
+    sit = pose == 'sit'
+    drop = 0.04 * h if sit else 0.0                 # the hips sink on a stool
+    hip_y, waist_y, shoulder_y, head_y = (v * h + drop for v in (HIP, WAIST, SHOULDER, HEAD))
+    if beard is None:
+        beard = not gown and not fair
+    hem_y = -0.005 * h if gown and not sit else -0.30 * h
+    # the legs (and the stool)
+    if sit:
+        W.band(c, (-0.13 * h, hip_y + 0.03 * h), (0.09 * h, hip_y + 0.03 * h), 0.018 * h,
+               color, t=t, motion=m)
+        for sx in (-0.1 * h, 0.06 * h):
+            W.band(c, (sx, hip_y + 0.04 * h), (sx - 0.01 * h, 0.0), 0.013 * h, color, t=t, motion=m)
+        legs = (((0.0, hip_y), (0.25 * h, hip_y + 0.02 * h), (0.22 * h, -0.035 * h),
+                 (0.17 * h, -0.015 * h), (0.34 * h, -0.003 * h)),
+                ((0.0, hip_y), (0.21 * h, hip_y + 0.035 * h), (0.17 * h, -0.035 * h),
+                 (0.12 * h, -0.015 * h), (0.29 * h, -0.003 * h)))
     else:
-        hips, neck, head = (0.0, -0.45 * h), (0.0, -0.78 * h), (0.0, -0.89 * h)
-        for side, ph in ((-1, 0.0), (1, math.pi)):
-            step = (W.Motion(angle=Wave(0.4 * walk, 0.0, 6.0, ph + phase), pivot=hips)
-                    if walk else None)
-            W.stroke(c, hips, (side * 0.1 * h, 0.0), color, w, t=t, motion=W.chain(step, m))
-    upper = W.chain(W.Motion(angle=lean, pivot=hips), m) if lean else m
-    if gown:
-        W.band(c, neck, (0.0, 0.0), lambda L: Wave.rise(0.15 * h, L, 0.05 * h), color,
-               t=t, motion=upper)
-    else:
-        W.band(c, neck, hips, lambda L: Wave.rise(0.05 * h, L, 0.05 * h), color,
-               t=t, motion=upper)
-    W.Orbit.ellipse(head, 0.1 * h, 0.1 * h).render(c, color, t, 0, upper)
-    if crest:
-        W.band(c, (-0.16 * h, head[1] - 0.08 * h), (0.16 * h, head[1] - 0.1 * h),
-               lambda L: Wave.bulge(0.07 * h, L), color, t=t, motion=upper)
-    shoulder = (0.0, neck[1] + 0.05 * h)
+        legs = (((0.02 * h, hip_y), (0.07 * h, -0.25 * h), (0.05 * h, -0.035 * h),
+                 (0.0, -0.015 * h), (0.16 * h, -0.003 * h)),
+                ((-0.02 * h, hip_y), (-0.05 * h, -0.25 * h), (-0.08 * h, -0.035 * h),
+                 (-0.13 * h, -0.015 * h), (0.03 * h, -0.003 * h)))
+    for k, (hip, knee, ankle, heel, toe) in enumerate(legs):
+        step = (W.Motion(angle=Wave(0.4 * walk, 0.0, 6.0, k * math.pi + phase), pivot=hip)
+                if walk and not sit else None)
+        _leg(c, h, hip, knee, ankle, heel, toe, color, t, W.chain(step, m))
+    if sit and gown:            # the gown over the lap, and down from the knee
+        W.band(c, (0.0, hip_y), (0.24 * h, hip_y + 0.02 * h), 0.065 * h, color, t=t, motion=m)
+        W.Ribbon(Wave.flat(0.0), Wave.rise(0.05 * h, 0.3 * h, 0.05 * h), -hip_y - 0.02 * h - 0.005 * h,
+                 'y', (0.22 * h, hip_y + 0.02 * h), step=h / 10).render(c, color, t, 0, m)
+    # the body: chest, waist, skirt, neck — bent at the hips when leaning
+    upper = W.chain(W.Motion(angle=lean, pivot=(0.0, hip_y)), m) if lean else m
+    chest = waist_y - shoulder_y
+    # broad at the shoulders, narrowing to the waist: an eighth of a
+    # cycle, near enough a straight taper, with the shoulders rounded off
+    W.Ribbon(Wave.flat(0.0), Wave.flat(0.112 * h) + Wave.rise(-0.06 * h, 2 * chest),
+             chest, 'y', (0.0, shoulder_y), step=h / 10).render(c, color, t, 0, upper)
+    for sx in (-0.085 * h, 0.085 * h):
+        W.Orbit.ellipse((sx, shoulder_y + 0.022 * h), 0.034 * h, 0.03 * h).render(
+            c, color, t, 0, upper)
+    skirt = 0.13 * h if gown and not sit else 0.04 * h
+    W.Ribbon(Wave.flat(0.0), Wave.rise(skirt, hem_y - waist_y, 0.07 * h), hem_y - waist_y,
+             'y', (0.0, waist_y), step=h / 10).render(c, color, t, 0, upper)
+    W.band(c, (0.0, shoulder_y + 0.01 * h), (0.012 * h, head_y + 0.04 * h), 0.028 * h,
+           color, t=t, motion=upper)
+    if eye:                     # the belt and the folds, scratched through the black
+        W.stroke(c, (-0.07 * h, waist_y), (0.07 * h, waist_y), eye, 1, t=t, motion=upper)
+        for k in ((-1, 0, 1) if gown else (-1, 1)):
+            W.stroke(c, (k * 0.03 * h, waist_y + 0.03 * h), (k * (0.14 if gown else 0.075) * h, hem_y - 0.03 * h),
+                     eye, 1, bend=k * 0.012 * h, t=t, motion=upper)
+    # the arms: the far one behind, the near one in front (and swinging,
+    # when it gestures)
     near, far = ARMS.get(arms, ARMS['down'])
-    aw = max(1.0, 0.8 * w)
-    swing = (W.Motion(angle=Wave(0.22, 0.0, 2.6, phase), pivot=shoulder)
+    swing = (W.Motion(angle=Wave(0.22, 0.0, 2.6, phase), pivot=(0.09 * h, shoulder_y + 0.015 * h))
              if arms in ('raised', 'cup', 'throw', 'out') else None)
-    W.stroke(c, shoulder, (far[0] * h, far[1] * h), color, aw, t=t, motion=upper)
-    hand = (near[0] * h, near[1] * h)
-    W.stroke(c, shoulder, hand, color, aw, t=t, motion=W.chain(swing, upper))
+    _arm(c, h, (-0.09 * h, shoulder_y + 0.015 * h), (far[0] * h, far[1] * h + drop), color, t, upper)
+    _head(c, h, (0.0, head_y), t, color, eye, beard, gown or fair, crest, fair, upper)
+    reach = W.chain(swing, upper)
+    hand = _arm(c, h, (0.09 * h, shoulder_y + 0.015 * h), (near[0] * h, near[1] * h + drop),
+                color, t, reach)
     if prop:
-        held(c, prop, hand, h, t, color, W.chain(swing, upper))
+        held(c, prop, hand, h, t, color, reach)
     return m
 
 
@@ -94,7 +218,7 @@ def held(c, prop, hand, h, t, color, m):
         W.stroke(c, (hx + 0.04 * h, 0.03 * h), (hx + 0.04 * h, -1.15 * h), color,
                  0.035 * h, t=t, motion=m)
     elif prop == 'stick':
-        W.stroke(c, (hx + 0.12 * h, 0.02 * h), (hx - 0.02 * h, hy - 0.06 * h), color,
+        W.stroke(c, (hx + 0.1 * h, -0.03 * h), (hx - 0.02 * h, hy - 0.06 * h), color,
                  0.03 * h, t=t, motion=m)
     elif prop == 'cup':
         W.Orbit.ellipse((hx + 0.02 * h, hy - 0.04 * h), 0.06 * h, 0.04 * h).render(
@@ -125,10 +249,10 @@ def held(c, prop, hand, h, t, color, m):
 
 
 def shade(c, x, y, h, t, phase=0.0, facing=1, prop=None, motion=None):
-    """One of the dead: faded, and never quite on the ground."""
+    """One of the dead: faded, eyeless, and never quite on the ground."""
     drift = W.Motion(dy=Wave(0.05 * h, 0.0, 0.9, phase))
     figure(c, x, y, h, t, T.GHOST, facing, phase, arms='down', prop=prop, gown=True,
-           motion=W.chain(drift, motion))
+           motion=W.chain(drift, motion), eye=None, beard=prop == 'staff')
 
 
 def song(c, origin, t, facing=1, length=80, color=T.INK_SOFT, n=3, phase=0.0):
@@ -144,46 +268,68 @@ def song(c, origin, t, facing=1, length=80, color=T.INK_SOFT, n=3, phase=0.0):
 # --- the residents ---------------------------------------------------------------
 
 def cyclops(c, x, y, h, t, facing=-1, blind=False, phase=0.0, motion=None):
-    """Polyphemus: a man twice over with one eye — put out, an X and
-    a stagger."""
+    """Polyphemus: a man twice over with one eye, in the middle of his
+    face — put out, an X and a stagger."""
     stagger = W.Motion(dx=Wave(0.05 * h, 0.0, 1.1, phase)) if blind else None
     m = figure(c, x, y, h, t, T.INK, facing, phase, arms='out' if blind else 'raised',
                prop=None if blind else 'club', motion=W.chain(stagger, motion))
-    eye = (0.04 * h, -0.9 * h)
+    eye = (0.036 * h, (HEAD - 0.012) * h)
     if blind:
+        W.Orbit.ellipse(eye, 0.03 * h, 0.02 * h).render(c, T.INK, t, 0, m)
         for dx in (-1, 1):
             W.stroke(c, (eye[0] + dx * 0.05 * h, eye[1] - 0.05 * h),
                      (eye[0] - dx * 0.05 * h, eye[1] + 0.05 * h), T.TERRACOTTA,
                      0.025 * h, t=t, motion=m)
     else:
-        W.Orbit.ellipse(eye, 0.055 * h, 0.04 * h).render(c, T.PAPYRUS, t, 0, m)
-        W.Orbit.ellipse(eye, 0.022 * h, 0.022 * h).render(c, T.INK, t, 0, m)
+        W.Orbit.ellipse(eye, 0.05 * h, 0.036 * h).render(c, T.PAPYRUS, t, 0, m)
+        W.Orbit.ellipse(eye, 0.02 * h, 0.02 * h).render(c, T.INK, t, 0, m)
 
 
 def witch(c, x, y, h, t, facing=-1, cup=True, singing=True, phase=0.0, motion=None):
     """Circe: a gown, a cup held out (or a wand), and a song."""
     figure(c, x, y, h, t, T.INK, facing, phase, arms='cup' if cup else 'out',
-           prop='cup' if cup else 'wand', gown=True, motion=motion)
+           prop='cup' if cup else 'wand', gown=True, fair=True, motion=motion)
     if singing:
         song(c, (x + facing * 0.2 * h, y - 0.95 * h), t, facing, 1.6 * h, phase=phase)
 
 
 def nymph(c, x, y, h, t, facing=-1, phase=0.0, motion=None):
     """Calypso: a gown, and an arm that beckons."""
-    figure(c, x, y, h, t, T.INK, facing, phase, arms='raised', gown=True, motion=motion)
+    figure(c, x, y, h, t, T.INK, facing, phase, arms='raised', gown=True, fair=True,
+           motion=motion)
 
 
 def siren(c, x, y, h, t, facing=1, singing=True, phase=0.0, motion=None):
-    """A siren: a woman with wings that beat, singing toward the ship."""
-    m = figure(c, x, y, h, t, T.INK, facing, phase, arms='up', gown=True, motion=motion)
-    shoulder = (0.0, -0.72 * h)
-    for tip, lag in (((-0.5 * h, -1.15 * h), 0.0), ((-0.62 * h, -0.8 * h), 0.4)):
-        beat = Wave(0.1 * h, 0.0, 7.0, phase + lag)
-        flap = W.Motion(angle=Wave(0.25, 0.0, 7.0, phase + lag), pivot=shoulder)
-        W.stroke(c, shoulder, tip, T.INK, 0.06 * h, bend=lambda L, b=beat: Wave.bulge(b, L),
-                 t=t, motion=W.chain(flap, m), step=h / 6)
+    """A siren as the vases have her: a bird with a woman's head — a
+    body and a fan of a tail, two legs, wings that beat, feathered
+    along the edge, and the song."""
+    hover = W.Motion(dy=Wave(0.04 * h, 0.0, 2.5, phase))
+    m = at(x, y, facing, motion, hover)
+    root = (-0.04 * h, -0.5 * h)
+
+    def wing(tip, lag, tone):
+        flap = W.Motion(angle=Wave(0.3, 0.0, 7.0, phase + lag), pivot=root)
+        W.band(c, root, tip,
+               lambda L: Wave.bulge(0.09 * h, L, 0.012 * h) + Wave(0.012 * h, 4.0 / L),
+               tone, t=t, motion=W.chain(flap, m), step=h / 8)
+
+    wing((-0.6 * h, -0.95 * h), 0.4, T.INK_SOFT)             # the far wing, behind
+    body = (0.0, -0.42 * h)
+    W.band(c, (-0.22 * h, -0.4 * h), (-0.52 * h, -0.27 * h),
+           lambda L: Wave.rise(0.05 * h, L, 0.015 * h) + Wave(0.01 * h, 3.0 / L),
+           T.INK, t=t, motion=m)
+    W.Orbit.ellipse(body, 0.3 * h, 0.17 * h).render(
+        c, T.INK, t, 0, W.chain(W.Motion(angle=-0.15, pivot=body), m))
+    for lx in (0.0, 0.07 * h):
+        W.band(c, (lx, -0.32 * h), (lx + 0.03 * h, -0.03 * h), 0.012 * h, T.INK, t=t, motion=m)
+        W.band(c, (lx - 0.02 * h, -0.012 * h), (lx + 0.15 * h, 0.0),
+               lambda L: Wave.fall(0.008 * h, L, 0.003 * h), T.INK, t=t, motion=m)
+    W.band(c, (0.2 * h, -0.5 * h), (0.3 * h, -0.74 * h),
+           lambda L: Wave.fall(0.014 * h, L, 0.022 * h), T.INK, t=t, motion=m)
+    _head(c, h, (0.32 * h, -0.82 * h), t, T.INK, T.PAPYRUS, hair=True, fair=True, m=m)
+    wing((-0.5 * h, -1.1 * h), 0.0, T.INK)                   # the near wing, over it
     if singing:
-        song(c, (x + facing * 0.2 * h, y - 0.95 * h), t, facing, 2.2 * h, n=3, phase=phase)
+        song(c, (x + facing * 0.45 * h, y - 0.9 * h), t, facing, 2.2 * h, n=3, phase=phase)
 
 
 def rock(c, x, y, w, h, t, color=T.INK, phase=0.0, motion=None):

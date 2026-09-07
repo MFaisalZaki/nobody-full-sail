@@ -262,7 +262,7 @@ class Stage:
 
     def cast_aeolus(self, c, t, props):
         x, y = self.on_land(0.74)
-        S.figure(c, x, y, 1.1 * self.hero_h, t, facing=-1, arms='out', gown=True,
+        S.figure(c, x, y, 1.1 * self.hero_h, t, facing=-1, arms='out', gown=True, beard=True,
                  prop='bag' if props.get('bag') else None)
 
     def cast_winds(self, c, t, props):
@@ -327,11 +327,11 @@ class Stage:
         W.Ribbon(Wave.flat(0.0), 0.05 * self.w, -0.14 * self.h, 'y', (x + 0.02 * self.w, y),
                  step=20).render(c, T.INK_SOFT, t, 0)
         S.figure(c, x, y, 1.05 * self.hero_h, t, facing=-1, pose='sit', arms='out', gown=True,
-                 prop='staff')
+                 beard=True, prop='staff')
 
     def cast_nausicaa(self, c, t, props):
         x, y = self.x0 + 0.645 * self.w, self.y0 + 0.86 * self.h
-        S.figure(c, x, y, self.hero_h, t, facing=-1, arms='raised', gown=True)
+        S.figure(c, x, y, self.hero_h, t, facing=-1, arms='raised', gown=True, fair=True)
         if props.get('ball', True):
             hop = W.Motion(dy=Wave.bounce(-0.14 * self.h, 0.0, 4, 2.4, 0.0, 0.0),
                            scale=Wave.bounce(0.25, 0.0, 3, 2.4, 0.0, 0.85), pivot=(x - 0.13 * self.w, y))
@@ -351,7 +351,7 @@ class Stage:
     def cast_penelope(self, c, t, props):
         x, y = self.x0 + 0.85 * self.w, self.y0 + 0.86 * self.h
         S.loom(c, x + 0.02 * self.w, y, 0.28 * self.h, t)
-        S.figure(c, x - 0.065 * self.w, y, self.hero_h, t, facing=1, arms='out', gown=True)
+        S.figure(c, x - 0.065 * self.w, y, self.hero_h, t, facing=1, arms='out', gown=True, fair=True)
 
     # -- the hero and the crew --
 

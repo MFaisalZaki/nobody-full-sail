@@ -46,7 +46,8 @@ class Canvas:
         return self.x(p[0]), self.y(p[1])
 
     def pts(self, ps):
-        return [self.pt(p) for p in ps]
+        ox, oy, k = self.ox, self.oy, self.k
+        return [(round(ox + x * k), round(oy + y * k)) for x, y in ps]
 
     def area(self, r):
         """A logical rect (or x, y, w, h) as a device Rect. Edges are

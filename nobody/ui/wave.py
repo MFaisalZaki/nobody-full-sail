@@ -269,10 +269,25 @@ def chain(*motions):
     return out
 
 
+def compose(m1, m2):
+    """The matrix of m1 followed by m2."""
+    a1, b1, c1, d1, e1, f1 = m1
+    a2, b2, c2, d2, e2, f2 = m2
+    return (a2 * a1 + b2 * c1, a2 * b1 + b2 * d1,
+            c2 * a1 + d2 * c1, c2 * b1 + d2 * d1,
+            a2 * e1 + b2 * f1 + e2, c2 * e1 + d2 * f1 + f2)
+
+
 def move(points, motion, t=0.0):
-    for m in chain(motion):
-        points = m.apply(points, t)
-    return points
+    """The points through every motion in turn — the matrices multiplied
+    out first, so each point is carried once."""
+    ms = chain(motion)
+    if not ms:
+        return points
+    a, b, c, d, e, f = ms[0].matrix(t)
+    for m in ms[1:]:
+        a, b, c, d, e, f = compose((a, b, c, d, e, f), m.matrix(t))
+    return [(a * x + b * y + e, c * x + d * y + f) for x, y in points]
 
 
 # --- the assets -------------------------------------------------------------------
@@ -403,7 +418,8 @@ def band(canvas, p, q, half, color, width=0, t=0.0, motion=None, step=None, cent
     length, turn = _turn(p, q)
     if length == 0:
         return
+    flat = not callable(half) and centre is None       # a plain slab: two ends will do
     half = half(length) if callable(half) else half
     centre = centre(length) if callable(centre) else (centre or Wave())
-    ribbon = Ribbon(centre, half, length, 'x', p, step or max(1.0, length / 12))
+    ribbon = Ribbon(centre, half, length, 'x', p, step or (length if flat else max(1.0, length / 8)))
     ribbon.render(canvas, color, t, width, chain(turn, motion))
