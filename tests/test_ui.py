@@ -18,7 +18,7 @@ from nobody import world as worlds               # noqa: E402
 from nobody.library import Library               # noqa: E402
 from nobody.ui import draw as D                  # noqa: E402
 from nobody.ui import theme as T                 # noqa: E402
-from nobody.ui.app import App, CrisisScreen      # noqa: E402
+from nobody.ui.app import App, CrisisScreen, IntroScreen   # noqa: E402
 from nobody.ui.window import AIR, TITLE_BAR, fit_scale   # noqa: E402
 
 ODYSSEY = os.path.join(os.path.dirname(HERE), 'worlds', 'odyssey')
@@ -86,6 +86,9 @@ def test_the_screens_render_at_twice_the_size():
     assert app.frame().get_size() == (880, 1760)
     assert T.scale() == 2.0
     app.new_game()
+    assert isinstance(app.screen, IntroScreen)
+    app.frame()
+    app.screen.next()
     assert isinstance(app.screen, CrisisScreen)
     frame = app.frame()
     # the card's papyrus, just inside its ink border, at device scale
@@ -105,6 +108,7 @@ def test_an_answer_can_be_read_before_it_is_taken_and_the_road_charted():
     library = Library.load(SMALL)
     app = App(world, library, headless=True, seed=1, timer=45, scale=1.0)
     app.new_game()
+    app.screen.next()               # past the opening
     app.screen.focus = 0
     frame = app.frame()
     # the description card sits over the foot of the crisis card, in papyrus
@@ -155,4 +159,29 @@ def test_every_voyage_is_charted_on_the_title():
     app.screen = ChartScreen(app, [], back=title)
     app.frame()
     assert app.screen.rows == [] and app.screen.lanes == 0
+    pygame.quit()
+
+
+def test_a_new_game_opens_on_where_you_stand_and_enter_takes_you_to_the_beach():
+    world = worlds.load(ODYSSEY)
+    library = Library.load(SMALL)
+    app = App(world, library, headless=True, seed=1, timer=45, scale=1.0)
+    app.new_game()
+    assert isinstance(app.screen, IntroScreen)
+    frame = app.frame()
+    # a page of papyrus with the opening board drawn on it, over the sea
+    assert frame.get_at((30, 300))[:3] == T.PAPYRUS
+    assert app.screen.stage is not None and app.screen.stage.scene.place
+    assert frame.get_at((4, 400))[:3] in (T.SEA, T.SEA_LIGHT)
+    app.screen.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+    assert isinstance(app.screen, CrisisScreen)
+    # Esc from the opening is a way back to the title
+    app.new_game()
+    app.screen.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    from nobody.ui.app import TitleScreen
+    assert isinstance(app.screen, TitleScreen)
+    # a world with no opening goes straight to its first crisis
+    world.intro = ()
+    app.new_game()
+    assert isinstance(app.screen, CrisisScreen)
     pygame.quit()

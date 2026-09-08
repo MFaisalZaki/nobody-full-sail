@@ -73,7 +73,10 @@ class App:
 
     def new_game(self):
         self.session = Session(self.world, self.library, seed=self.seed)
-        self.onward()
+        if self.world.intro:
+            self.screen = IntroScreen(self)
+        else:
+            self.onward()
 
     def onward(self):
         """The next screen of the story: its end, the only road on
@@ -350,6 +353,75 @@ class TitleScreen:
             y += D.text(surface, p, (r.x + 16, y), f, T.INK, width=r.width - 32) + 8
         hint = T.font(13, italic=True).render('(click or press any key)', True, T.INK_SOFT)
         surface.blit(hint, (r.x + (r.width - hint.get_width()) // 2, r.bottom - 30))
+
+
+# --- the opening ------------------------------------------------------------------
+
+class IntroScreen:
+    """Where you stand before the first crisis: the world's opening, a
+    page of it, over a picture of the board the story opens on — so a
+    player who has never heard of Troy knows why there is a wall."""
+
+    def __init__(self, app):
+        self.app = app
+        self.session = app.session
+        self.button = Button((24, T.H - 24 - 54, T.W - 48, 54), 'To the beach', self.next)
+        self.scene = app.world.scene(self.session.atoms, self.session.opening)
+        self.stage = None
+
+    def next(self):
+        self.app.onward()
+
+    def handle(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.button.rect.collidepoint(self.app.mouse()):
+                self.next()
+        elif event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_RIGHT):
+                self.next()
+            elif event.key == pygame.K_ESCAPE:
+                self.app.to_title()
+
+    def tick(self):
+        pass
+
+    def draw(self, surface):
+        app, world = self.app, self.app.world
+        t = app.time.t
+        sea(surface, t)
+        meters(surface, app)
+        r = wrap_card(surface, (24, 104, T.W - 48, self.button.rect.y - 118), world.intro_title)
+        y = r.y + 26 + D.text_height(T.font(15, bold=True), world.intro_title.upper(),
+                                     r.width - 32, max_lines=2) + 6
+        D.hrule(surface, r.x + 16, r.right - 16, y, T.INK_SOFT)
+        y += 8
+        # the page: the words first, at a size that fits, and the board
+        # the story opens on in whatever room is left above them
+        paras = [p.format(timer=int(app.timer)) for p in world.intro]
+        room = r.bottom - 30 - y
+        for body in (T.font(14), T.font(13), T.font(12)):
+            need = sum(D.text_height(body, p, r.width - 32) + 8 for p in paras) + 14
+            if room - need >= 0.22 * r.height:
+                break
+        stage = (r.x + 12, y, r.width - 24, min(0.34 * r.height, max(0.16 * r.height, room - need)))
+        if self.stage is None or self.stage.rect != stage:
+            self.stage = SC.Stage(self.scene, stage)
+        mood = 1.0
+        if world.sky:
+            value, lo, hi = self.session.bar(world.sky)
+            mood = 0.0 if hi == lo else (value - lo) / (hi - lo)
+        self.stage.draw(surface, t, mood)
+        y = stage[1] + stage[3] + 2
+        D.hrule(surface, r.x + 16, r.right - 16, y, T.INK_SOFT)
+        y += 10
+        for para in paras:
+            if y > r.bottom - 40:
+                break
+            y += D.text(surface, para, (r.x + 16, y), body, T.INK, width=r.width - 32,
+                        line_gap=2) + 8
+        D.meander(surface, (r.x + 10, r.bottom - 20, r.width - 20, 12), T.OCHRE, cell=12, width=2)
+        m = app.mouse() if not app.headless else (-1, -1)
+        self.button.draw(surface, T.font(20, bold=True), self.button.rect.collidepoint(m))
 
 
 # --- the crisis -----------------------------------------------------------------
@@ -1230,6 +1302,9 @@ def screenshots(world, library, out_dir, seed=1, steps=6, scale=1.0):
     app.screen = ChartScreen(app, runs, back=app.screen)
     shot('03-voyages')
     app.new_game()
+    if isinstance(app.screen, IntroScreen):
+        shot('04-intro')
+        app.screen.next()
     k = 0
     while not app.session.over and k < steps:
         if isinstance(app.screen, CrisisScreen):

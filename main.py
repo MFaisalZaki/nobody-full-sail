@@ -76,6 +76,11 @@ def cmd_walk(args):
     world = worlds.load(args.world)
     library = Library.load(args.out or world.library_path)
     session = Session(world, library, seed=args.seed)
+    if world.intro:
+        print(f'── {world.intro_title} ──')
+        for para in world.intro:
+            print(para.format(timer=world.timer))
+            print()
     print(session.intro())
     while not session.over:
         if session.lone() is not None:

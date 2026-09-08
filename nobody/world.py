@@ -94,6 +94,11 @@ class World:
     #: the newspaper's masthead and tagline
     masthead = 'THE DAILY RECKONING'
     tagline = ''
+    #: the opening: a heading and paragraphs of where the player stands
+    #: before the first crisis ('{timer}' is the seconds per decision);
+    #: a world with none goes straight to the first crisis
+    intro_title = ''
+    intro = ()
     #: the benchmark the score is read against, if the world has one
     benchmark = None
     #: the meter the sky is read from (its floor is a storm), if any

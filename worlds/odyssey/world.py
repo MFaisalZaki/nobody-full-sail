@@ -33,6 +33,25 @@ class Odyssey(World):
     masthead = 'THE DAILY OMEN'
     tagline = 'All the news the gods see fit to send · Est. 1184 BC'
     sky = 'divine'
+    intro_title = 'Troy. The tenth year.'
+    intro = (
+        'You are Odysseus, king of Ithaca, and you have been at Troy for '
+        'ten years. The walls are still standing. The men who sailed with '
+        'you would like to go home, and so, in your way, would you.',
+        'Ithaca is a long way west: a rocky island, a patient wife, a son '
+        'who was a baby when you left, and a hall filling each year with '
+        'men who would like to be you. Between here and there are the gods, '
+        'who take offence easily, and a sea that belongs to one of them.',
+        'Every scene, a crisis lands and you have {timer} seconds to answer '
+        'it. Each answer pleases somebody and costs somebody else: the crew, '
+        'the gods, the household, and the bards, who decide whether anyone '
+        'remembers any of this. Let the gods, Ithaca or the bards hit the '
+        'floor and it is over. Losing the crew is not the end. It is the poem.',
+        'The poem\'s own road took ten years, cost every man, and got you '
+        'home alone and known by your wife. There are other roads. Some are '
+        'shorter. None are safe.',
+        'It begins on the beach, below a wall nobody has managed to get over.',
+    )
     benchmark = {'label': 'Odysseus', 'years': 10,
                  'blurb': 'The poem itself: ten years at sea, home alone, '
                           'every man lost, and known by his wife.'}
