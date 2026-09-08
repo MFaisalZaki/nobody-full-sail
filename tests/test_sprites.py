@@ -116,3 +116,52 @@ def test_a_figure_survives_being_very_small_and_very_large():
     S.figure(canvas, 20, 30, 5, 0.0, crest=True, prop='spear')
     S.figure(canvas, 200, 390, 300, 0.0, gown=True, fair=True, arms='out', prop='cup')
     assert _where(surface, T.INK)
+
+
+# --- the beasts, the horse, the sky ---------------------------------------------------
+
+@pytest.mark.parametrize('draw', [
+    lambda c: S.horse(c, 80, 140, 60, 0.3),
+    lambda c: S.horse(c, 80, 140, 60, 0.3, riders=4),
+    lambda c: S.cow(c, 80, 140, 50, 0.3),
+    lambda c: S.cow(c, 80, 140, 50, 0.3, facing=-1),
+    lambda c: S.pig(c, 80, 140, 30, 0.3),
+    lambda c: S.tree(c, 80, 140, 100, 0.3),
+    lambda c: S.lotus(c, 80, 140, 40, 0.3),
+    lambda c: S.bones(c, 80, 140, 40, 0.3),
+    lambda c: S.house(c, 80, 140, 40, 45, 0.3),
+])
+def test_a_thing_on_the_land_stands_on_it_and_leaves_ink(draw):
+    canvas, surface = _canvas()
+    draw(canvas)
+    ink = _where(surface, T.INK)
+    assert len(ink) > 100
+    assert max(y for _, y in ink) <= 142 and min(y for _, y in ink) < 125
+
+
+def test_the_wooden_horse_shows_its_men_and_scylla_her_heads():
+    canvas, surface = _canvas(240, 200)
+    S.horse(canvas, 120, 180, 80, 0.0, riders=4)
+    hatch = [p for p in _where(surface, T.PAPYRUS) if 100 < p[0] < 140 and 105 < p[1] < 125]
+    assert hatch                                  # the hatch, in the light, with men in it
+    canvas, surface = _canvas(240, 200)
+    S.scylla(canvas, 200, 190, 70, 0.0, facing=-1)
+    eyes = _where(surface, T.PAPYRUS)
+    assert len(eyes) >= 6                         # six heads, each with an eye
+    xs = [x for x, _ in eyes]
+    assert max(xs) - min(xs) > 20                 # spread out, not knotted together
+
+
+def test_the_clouds_go_round_the_sky_at_a_steady_pace():
+    sky = (0, 0, 376, 200)
+
+    def where(t):
+        return [(x, y) for j, x, y, _ in S.carousel(sky, t, storm=0.5) if j == 0]
+
+    (ax, ay), (bx, by), (dx, dy) = (where(t)[-1] for t in (0.0, 4.0, 8.0))
+    assert bx > ax and dx > bx                                # eastward, every frame
+    assert (dx - bx) == pytest.approx(bx - ax, rel=0.02)      # at an even pace
+    assert abs(dy - ay) < 2                                   # and level, near enough
+    canvas, surface = _canvas(376, 200)
+    S.clouds(canvas, sky, 0.0, fill=T.INK, line=T.INK, storm=0.5)
+    assert len(_where(surface, T.INK)) > 500                  # and drawn

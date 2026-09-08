@@ -341,23 +341,31 @@ def rock(c, x, y, w, h, t, color=T.INK, phase=0.0, motion=None):
 
 def scylla(c, x, y, h, t, facing=-1, phase=0.0, motion=None):
     """Scylla: six necks out of a rock, writhing toward whatever
-    passes, each with a head and open jaws."""
+    passes, each with a dog's head on it — ears back, jaws snapping."""
     rock(c, x, y, 1.2 * h, 0.5 * h, t, T.INK, phase, motion)
+    # the necks fan out toward the prey, the longest from the far side,
+    # so the heads spread along a diagonal rather than knot together
     for k in range(6):
-        reach = -(0.7 + 0.08 * (k % 3)) * h
-        neck = (Wave(Wave(0.05 * h, 0.0, 1.7, phase + 1.1 * k, 0.08 * h),
-                     1.0 / (1.1 * h), 0.0, 0.9 * k)
-                + Wave.rise(facing * (0.25 + 0.05 * k) * h, reach))
-        trail = W.Trail(neck, reach, 'y', (x + (k - 2.5) * 0.14 * h, y - 0.45 * h),
-                        step=h / 10)
-        trail.render(c, T.INK, t, max(1.0, 0.06 * h), motion)
-        hx, hy = trail.buffer[-1]
-        W.Orbit.ellipse((hx, hy), 0.09 * h, 0.06 * h).render(c, T.INK, t, 0)
-        snap = W.Motion(angle=Wave(0.35, 0.0, 5.0, phase + k), pivot=(hx, hy))
-        W.stroke(c, (hx, hy), (hx + facing * 0.16 * h, hy + 0.04 * h), T.INK, 0.03 * h,
-                 t=t, motion=snap)
-        W.stroke(c, (hx, hy), (hx + facing * 0.15 * h, hy - 0.05 * h), T.INK, 0.03 * h,
-                 t=t)
+        reach = -(0.55 + 0.09 * k) * h
+        root = (x - facing * (k - 2.5) * 0.18 * h, y - 0.42 * h)
+        neck = (Wave(Wave(0.06 * h, 0.0, 1.7, phase + 1.1 * k, 0.08 * h), 1.0 / (1.1 * h), 0.0, 0.9 * k)
+                + Wave.rise(facing * (0.12 + 0.1 * k) * h, reach))
+        W.Ribbon(neck, Wave.fall(0.03 * h, reach, 0.03 * h), reach, 'y', root,
+                 step=h / 10).render(c, T.INK, t, 0, motion)
+        hx, hy = root[0] + neck(reach, t), root[1] + reach
+        head = W.chain(W.Motion(angle=Wave(0.2, 0.0, 5.0, phase + k), pivot=(hx, hy)), motion)
+        W.Orbit.ellipse((hx, hy), 0.08 * h, 0.065 * h).render(c, T.INK, t, 0, head)
+        W.band(c, (hx, hy - 0.01 * h), (hx + facing * 0.2 * h, hy), 
+               lambda L: Wave.fall(0.03 * h, L, 0.022 * h), T.INK, t=t, motion=head)
+        hinge = (hx + facing * 0.04 * h, hy + 0.025 * h)
+        jaw = W.chain(W.Motion(angle=Wave(facing * 0.18, 0.0, 5.0, phase + k, facing * 0.22),
+                               pivot=hinge), head)
+        W.band(c, hinge, (hx + facing * 0.2 * h, hy + 0.03 * h),
+               lambda L: Wave.fall(0.018 * h, L, 0.006 * h), T.INK, t=t, motion=jaw)
+        W.band(c, (hx - facing * 0.02 * h, hy - 0.05 * h), (hx - facing * 0.1 * h, hy - 0.13 * h),
+               lambda L: Wave.fall(0.025 * h, L, 0.004 * h), T.INK, t=t, motion=head)
+        W.Orbit.ellipse((hx + facing * 0.035 * h, hy - 0.022 * h), 0.018 * h, 0.014 * h).render(
+            c, T.PAPYRUS, t, 0, head)
 
 
 def whirlpool(c, x, y, r, t, phase=0.0, motion=None):
@@ -371,43 +379,75 @@ def whirlpool(c, x, y, r, t, phase=0.0, motion=None):
 
 
 def cow(c, x, y, h, t, facing=1, phase=0.0, motion=None):
-    """One of the sun's cattle, grazing: the head bobs, the tail swings."""
+    """One of the sun's cattle: a barrel of a body on four legs with
+    hooves, a neck down to a grazing head with horns and an ear, a
+    tail that swings. The head bobs as it crops."""
     m = at(x, y, facing, motion)
-    W.Orbit.ellipse((0.0, -0.5 * h), 0.4 * h, 0.2 * h).render(c, T.INK, t, 0, m)
-    for lx in (-0.28, -0.14, 0.14, 0.28):
-        W.stroke(c, (lx * h, -0.4 * h), (lx * h, 0.0), T.INK, 0.05 * h, t=t, motion=m)
-    bob = W.Motion(dy=Wave(0.03 * h, 0.0, 1.1, phase))
+    for lx in (-0.36, -0.26, 0.2, 0.3):                 # the legs, the body over them
+        W.band(c, (lx * h, -0.55 * h), ((lx + 0.02) * h, -0.27 * h),
+               lambda L: Wave.fall(0.025 * h, L, 0.04 * h), T.INK, t=t, motion=m)
+        W.band(c, ((lx + 0.02) * h, -0.28 * h), ((lx + 0.01) * h, -0.03 * h), 0.028 * h,
+               T.INK, t=t, motion=m)
+        W.band(c, ((lx - 0.02) * h, -0.03 * h), ((lx + 0.06) * h, -0.005 * h),
+               lambda L: Wave.fall(0.012 * h, L, 0.02 * h), T.INK, t=t, motion=m)
+    W.Ribbon(Wave.bulge(0.03 * h, 0.85 * h, -0.62 * h), Wave.bulge(0.03 * h, 0.85 * h, 0.2 * h),
+             0.85 * h, 'x', (-0.48 * h, 0), step=h / 10).render(c, T.INK, t, 0, m)
+    W.Orbit.ellipse((-0.46 * h, -0.62 * h), 0.12 * h, 0.22 * h).render(c, T.INK, t, 0, m)
+    W.Orbit.ellipse((0.36 * h, -0.66 * h), 0.14 * h, 0.22 * h).render(c, T.INK, t, 0, m)
+    bob = W.Motion(dy=Wave(0.03 * h, 0.0, 1.1, phase), angle=Wave(0.05, 0.0, 1.1, phase),
+                   pivot=(0.4 * h, -0.7 * h))
     head = W.chain(bob, m)
-    W.Orbit.ellipse((0.5 * h, -0.32 * h), 0.13 * h, 0.09 * h).render(c, T.INK, t, 0, head)
-    W.stroke(c, (0.45 * h, -0.5 * h), (0.5 * h, -0.4 * h), T.INK, 0.05 * h, t=t, motion=head)
-    for hx, tip in ((0.55, (0.63, -0.58)), (0.47, (0.43, -0.58))):
-        W.stroke(c, (hx * h, -0.4 * h), (tip[0] * h, tip[1] * h), T.INK, 0.025 * h,
-                 t=t, motion=head)
-    swish = W.Motion(angle=Wave(0.3, 0.0, 2.2, phase), pivot=(-0.4 * h, -0.55 * h))
-    W.stroke(c, (-0.4 * h, -0.55 * h), (-0.52 * h, -0.22 * h), T.INK, 0.03 * h,
-             t=t, motion=W.chain(swish, m))
+    W.band(c, (0.38 * h, -0.74 * h), (0.66 * h, -0.6 * h),
+           lambda L: Wave.fall(0.05 * h, L, 0.08 * h), T.INK, t=t, motion=head)
+    W.band(c, (0.64 * h, -0.62 * h), (0.86 * h, -0.5 * h),
+           lambda L: Wave.fall(0.035 * h, L, 0.05 * h), T.INK, t=t, motion=head)
+    W.Orbit.ellipse((0.86 * h, -0.5 * h), 0.06 * h, 0.05 * h).render(c, T.INK, t, 0, head)
+    for hx, tip in ((0.62, (0.72, -0.92)), (0.57, (0.63, -0.94))):
+        W.stroke(c, (hx * h, -0.7 * h), (tip[0] * h, tip[1] * h), T.INK, 0.03 * h,
+                 bend=-0.04 * h, t=t, motion=head)
+    W.band(c, (0.58 * h, -0.68 * h), (0.47 * h, -0.6 * h),
+           lambda L: Wave.fall(0.022 * h, L, 0.005 * h), T.INK, t=t, motion=head)
+    W.Orbit.ellipse((0.7 * h, -0.64 * h), 0.02 * h, 0.015 * h).render(c, T.PAPYRUS, t, 0, head)
+    swish = W.Motion(angle=Wave(0.3, 0.0, 2.2, phase), pivot=(-0.5 * h, -0.78 * h))
+    tail = W.chain(swish, m)
+    W.band(c, (-0.5 * h, -0.78 * h), (-0.56 * h, -0.34 * h), 0.02 * h, T.INK, t=t, motion=tail)
+    W.Orbit.ellipse((-0.57 * h, -0.3 * h), 0.035 * h, 0.06 * h).render(c, T.INK, t, 0, tail)
 
 
 def bones(c, x, y, h, t, motion=None):
-    """What is left of a cow: three ribs on the ground."""
+    """What is left of a cow: the horned skull, a spine, three ribs."""
+    W.stroke(c, (x - 0.6 * h, y - 0.06 * h), (x + 0.2 * h, y - 0.06 * h), T.INK, 0.05 * h,
+             t=t, motion=motion)
     for k in range(3):
-        W.stroke(c, (x + (k - 1) * 0.22 * h, y), (x + (k - 1) * 0.22 * h + 0.1 * h, y - 0.3 * h),
-                 T.INK, 0.03 * h, bend=0.06 * h, t=t, motion=motion)
+        rx = x - (0.45 - 0.2 * k) * h
+        W.stroke(c, (rx, y - 0.06 * h), (rx + 0.12 * h, y - 0.42 * h), T.INK, 0.04 * h,
+                 bend=0.08 * h, t=t, motion=motion)
+    W.Orbit.ellipse((x + 0.38 * h, y - 0.16 * h), 0.2 * h, 0.15 * h).render(c, T.INK, t, 0, motion)
+    W.band(c, (x + 0.5 * h, y - 0.14 * h), (x + 0.72 * h, y - 0.06 * h),
+           lambda L: Wave.fall(0.05 * h, L, 0.04 * h), T.INK, t=t, motion=motion)
+    for dx in (0.3, 0.42):
+        W.stroke(c, (x + dx * h, y - 0.28 * h), (x + (dx + 0.14) * h, y - 0.5 * h), T.INK,
+                 0.035 * h, bend=-0.06 * h, t=t, motion=motion)
 
 
 def pig(c, x, y, h, t, facing=1, phase=0.0, motion=None):
-    """A man, lately: a pig, trotting."""
+    """A man, lately: a pig, trotting — a round body, a head with a
+    snout and pricked ears, a curl of a tail."""
     m = at(x, y, facing, motion)
-    W.Orbit.ellipse((0.0, -0.32 * h), 0.32 * h, 0.2 * h).render(c, T.INK, t, 0, m)
-    W.Orbit.ellipse((0.3 * h, -0.3 * h), 0.13 * h, 0.09 * h).render(c, T.INK, t, 0, m)
-    W.Orbit.ellipse((0.42 * h, -0.27 * h), 0.05 * h, 0.035 * h).render(c, T.INK, t, 0, m)
-    W.stroke(c, (0.28 * h, -0.38 * h), (0.24 * h, -0.5 * h), T.INK, 0.03 * h, t=t, motion=m)
-    for k, lx in enumerate((-0.2, -0.08, 0.1, 0.22)):
+    for k, lx in enumerate((-0.22, -0.1, 0.1, 0.22)):
         trot = W.Motion(angle=Wave(0.3, 0.0, 8.0, phase + k * math.pi), pivot=(lx * h, -0.25 * h))
-        W.stroke(c, (lx * h, -0.25 * h), (lx * h, 0.0), T.INK, 0.045 * h, t=t,
-                 motion=W.chain(trot, m))
-    W.stroke(c, (-0.3 * h, -0.4 * h), (-0.42 * h, -0.5 * h), T.INK, 0.025 * h, bend=0.05 * h,
-             t=t, motion=m)
+        W.band(c, (lx * h, -0.3 * h), ((lx + 0.01) * h, 0.0),
+               lambda L: Wave.fall(0.012 * h, L, 0.022 * h), T.INK, t=t, motion=W.chain(trot, m))
+    W.Orbit.ellipse((0.0, -0.36 * h), 0.36 * h, 0.24 * h).render(c, T.INK, t, 0, m)
+    W.Orbit.ellipse((0.3 * h, -0.36 * h), 0.14 * h, 0.12 * h).render(c, T.INK, t, 0, m)
+    W.band(c, (0.38 * h, -0.34 * h), (0.52 * h, -0.28 * h),
+           lambda L: Wave.fall(0.05 * h, L, 0.035 * h), T.INK, t=t, motion=m)
+    W.Orbit.ellipse((0.52 * h, -0.28 * h), 0.02 * h, 0.035 * h).render(c, T.INK, t, 0, m)
+    for ex in (0.26, 0.33):
+        W.band(c, (ex * h, -0.44 * h), ((ex - 0.04) * h, -0.58 * h),
+               lambda L: Wave.fall(0.025 * h, L, 0.004 * h), T.INK, t=t, motion=m)
+    W.Orbit.ellipse((0.38 * h, -0.4 * h), 0.018 * h, 0.014 * h).render(c, T.PAPYRUS, t, 0, m)
+    W.Orbit.ellipse((-0.38 * h, -0.5 * h), 0.05 * h, 0.05 * h).render(c, T.INK, t, 1, m)
 
 
 def giant(c, x, y, h, t, facing=1, phase=0.0, motion=None):
@@ -435,27 +475,38 @@ def smoke(c, x, y, h, t, phase=0.0, color=T.GHOST, n=2):
 
 
 def tree(c, x, y, h, t, phase=0.0, motion=None):
-    """An olive: a trunk and three heads of leaves, swaying."""
+    """An olive: a gnarled trunk that forks into three limbs, a head of
+    leaves on each, swaying."""
     sway = W.Motion(angle=Wave(0.03, 0.0, 0.7, phase))
     m = at(x, y, 1, motion, sway)
-    W.band(c, (0.0, 0.0), (0.05 * h, -0.55 * h), lambda L: Wave.fall(0.05 * h, L, 0.03 * h),
-           T.INK, t=t, motion=m)
-    for cx, cy, rx, ry in ((-0.16, -0.62, 0.28, 0.19), (0.2, -0.68, 0.26, 0.18),
-                           (0.02, -0.84, 0.3, 0.2)):
-        W.Orbit.ellipse((cx * h, cy * h), rx * h, ry * h).render(c, T.INK, t, 0, m)
+    fork = (0.03 * h, -0.5 * h)
+    W.band(c, (0.0, 0.0), fork,
+           lambda L: Wave.fall(0.05 * h, L, 0.04 * h) + Wave(0.012 * h, 3.0 / L, 0.0, 0.7),
+           T.INK, t=t, motion=m, centre=lambda L: Wave(0.02 * h, 1.5 / L, 0.0, 0.3))
+    crowns = ((-0.24, -0.72, 0.27, 0.16), (0.22, -0.78, 0.26, 0.15), (0.03, -0.9, 0.3, 0.17))
+    for k, (cx, cy, rx, ry) in enumerate(crowns):
+        W.band(c, fork, (cx * h, cy * h), lambda L: Wave.fall(0.03 * h, L, 0.012 * h), T.INK,
+               t=t, motion=m, centre=lambda L: Wave.bulge(0.03 * h, L))
+    for k, (cx, cy, rx, ry) in enumerate(crowns):
+        W.Orbit(Wave(Wave(0.06 * h, 5.0, 0.0, phase + k, rx * h), 1.0, 0.0, math.pi / 2),
+                Wave(Wave(0.04 * h, 5.0, 0.0, phase + k + 0.5, ry * h), 1.0, 0.0, 0.0),
+                (cx * h, cy * h), 48).render(c, T.INK, t, 0, m)
 
 
 def lotus(c, x, y, h, t, phase=0.0, motion=None):
-    """Lotus: stems that nod, and blooms the colour of the pot."""
+    """Lotus: stems that nod, and blooms the colour of the pot — a fan
+    of petals on a cup of sepals."""
     for k, (dx, hh) in enumerate(((-0.3, 0.9), (0.0, 1.0), (0.3, 0.8))):
         nod = W.Motion(angle=Wave(0.06, 0.0, 1.5, phase + k), pivot=(x + dx * h, y))
         m = W.chain(nod, motion)
-        W.stroke(c, (x + dx * h, y), (x + dx * h + 0.05 * h, y - hh * h), T.INK, 0.03 * h,
-                 bend=0.04 * h, t=t, motion=m)
-        W.Orbit.ellipse((x + dx * h + 0.06 * h, y - hh * h - 0.04 * h), 0.1 * h, 0.07 * h).render(
-            c, T.TERRACOTTA, t, 0, m)
-        W.Orbit.ellipse((x + dx * h + 0.06 * h, y - hh * h - 0.04 * h), 0.1 * h, 0.07 * h).render(
-            c, T.INK, t, 1, m)
+        top = (x + dx * h + 0.05 * h, y - hh * h)
+        W.stroke(c, (x + dx * h, y), top, T.INK, 0.03 * h, bend=0.04 * h, t=t, motion=m)
+        for a in (-0.7, -0.35, 0.0, 0.35, 0.7):
+            tip = (top[0] + 0.16 * h * math.sin(a), top[1] - 0.16 * h * math.cos(a))
+            W.band(c, top, tip, lambda L: Wave.bulge(0.035 * h, L, 0.004 * h), T.TERRACOTTA,
+                   t=t, motion=m)
+        W.band(c, (top[0] - 0.06 * h, top[1] + 0.01 * h), (top[0] + 0.06 * h, top[1] + 0.01 * h),
+               lambda L: Wave.bulge(0.03 * h, L, 0.005 * h), T.INK, t=t, motion=m)
 
 
 def cave(c, x, y, w, h, t, shut=False, inside=False, motion=None):
@@ -506,45 +557,57 @@ def walls(c, x, y, w, h, t, fallen=False, motion=None):
 
 
 def horse(c, x, y, h, t, riders=0, motion=None):
-    """The wooden horse, on its wheels; hollow, with men in it, when
-    they are in it."""
-    m = W.chain(motion)
-    body = W.Orbit.ellipse((x, y - 0.62 * h), 0.38 * h, 0.2 * h)
-    for lx in (-0.24, -0.14, 0.14, 0.24):
-        W.band(c, (x + lx * h, y - 0.55 * h), (x + lx * h * 1.05, y - 0.12 * h), 0.03 * h,
-               T.INK, t=t, motion=m)
-    for wx in (-0.26, 0.26):
-        W.Orbit.ellipse((x + wx * h, y - 0.1 * h), 0.1 * h, 0.1 * h).render(c, T.INK, t, 0, m)
-        W.Orbit.ellipse((x + wx * h, y - 0.1 * h), 0.035 * h, 0.035 * h).render(c, T.PAPYRUS, t, 0, m)
-    W.band(c, (x + 0.3 * h, y - 0.72 * h), (x + 0.5 * h, y - 1.06 * h),
-           lambda L: Wave.fall(0.09 * h, L, 0.05 * h), T.INK, t=t, motion=m)
-    W.band(c, (x + 0.24 * h, y - 0.78 * h), (x + 0.42 * h, y - 1.1 * h),
-           lambda L: Wave.bulge(0.05 * h, L), T.INK, t=t, motion=m)
-    head = (x + 0.58 * h, y - 1.08 * h)
-    W.Orbit.ellipse(head, 0.15 * h, 0.07 * h).render(
-        c, T.INK, t, 0, W.chain(W.Motion(angle=0.45, pivot=head), m))
-    W.stroke(c, (x + 0.5 * h, y - 1.12 * h), (x + 0.47 * h, y - 1.24 * h), T.INK, 0.03 * h,
-             t=t, motion=m)
-    W.stroke(c, (x - 0.36 * h, y - 0.66 * h), (x - 0.52 * h, y - 0.3 * h), T.INK, 0.035 * h,
-             bend=0.08 * h, t=t, motion=m)
+    """The wooden horse: a horse as the vases draw one — a long body,
+    an arched neck under a mane, a head with pricked ears, a tail —
+    standing on a wheeled sledge; hollow, with the men showing in a
+    hatch in its flank, when they are in it."""
+    m = at(x, y, 1, motion)
+    W.band(c, (-0.55 * h, -0.14 * h), (0.55 * h, -0.14 * h), 0.035 * h, T.INK, t=t, motion=m)
+    for wx in (-0.38 * h, 0.38 * h):
+        W.Orbit.ellipse((wx, -0.11 * h), 0.11 * h, 0.11 * h).render(c, T.INK, t, 0, m)
+        W.Orbit.ellipse((wx, -0.11 * h), 0.04 * h, 0.04 * h).render(c, T.PAPYRUS, t, 0, m)
+    for lx in (-0.36, -0.26, 0.24, 0.34):
+        W.band(c, (lx * h, -0.6 * h), ((lx + 0.02) * h, -0.16 * h),
+               lambda L: Wave.fall(0.02 * h, L, 0.035 * h), T.INK, t=t, motion=m)
+    W.Ribbon(Wave.bulge(0.03 * h, 0.9 * h, -0.8 * h), Wave.bulge(0.04 * h, 0.9 * h, 0.15 * h),
+             0.9 * h, 'x', (-0.48 * h, 0), step=h / 10).render(c, T.INK, t, 0, m)
+    W.Orbit.ellipse((-0.46 * h, -0.8 * h), 0.12 * h, 0.17 * h).render(c, T.INK, t, 0, m)
+    W.Orbit.ellipse((0.4 * h, -0.82 * h), 0.12 * h, 0.17 * h).render(c, T.INK, t, 0, m)
+    # the mane behind the neck, the neck arched over it, the head
+    W.band(c, (0.28 * h, -0.98 * h), (0.58 * h, -1.4 * h),
+           lambda L: Wave.flat(0.03 * h) + Wave(0.02 * h, 5.0 / L), T.INK, t=t, motion=m,
+           centre=lambda L: Wave.bulge(-0.05 * h, L))
+    W.band(c, (0.36 * h, -0.9 * h), (0.66 * h, -1.32 * h),
+           lambda L: Wave.fall(0.05 * h, L, 0.065 * h), T.INK, t=t, motion=m,
+           centre=lambda L: Wave.bulge(-0.05 * h, L))
+    W.Orbit.ellipse((0.7 * h, -1.29 * h), 0.08 * h, 0.075 * h).render(c, T.INK, t, 0, m)
+    W.band(c, (0.66 * h, -1.32 * h), (0.98 * h, -1.2 * h),
+           lambda L: Wave.fall(0.035 * h, L, 0.04 * h), T.INK, t=t, motion=m)
+    W.Orbit.ellipse((0.98 * h, -1.2 * h), 0.04 * h, 0.04 * h).render(c, T.INK, t, 0, m)
+    for ex, tip in ((0.62, 0.6), (0.68, 0.7)):
+        W.band(c, (ex * h, -1.38 * h), (tip * h, -1.5 * h),
+               lambda L: Wave.fall(0.018 * h, L, 0.004 * h), T.INK, t=t, motion=m)
+    W.Orbit.ellipse((0.74 * h, -1.31 * h), 0.02 * h, 0.015 * h).render(c, T.PAPYRUS, t, 0, m)
+    W.band(c, (-0.5 * h, -0.9 * h), (-0.62 * h, -0.42 * h),
+           lambda L: Wave.bulge(0.03 * h, L, 0.02 * h) + Wave(0.008 * h, 6.0 / L), T.INK, t=t,
+           motion=m, centre=lambda L: Wave.bulge(0.04 * h, L))
     if riders:
-        body.render(c, T.PAPYRUS, t, 0, m)
-        body.render(c, T.INK, t, 2, m)
+        W.Ribbon(Wave.flat(-0.78 * h), 0.1 * h, 0.65 * h, 'x', (-0.35 * h, 0), step=h).render(
+            c, T.PAPYRUS, t, 0, m)
         for k in range(min(riders, 4)):
-            figure(c, x + (k - 1.5) * 0.15 * h, y - 0.5 * h, 0.24 * h, t, T.INK, 1, k * 0.8,
-                   motion=m)
-    else:
-        body.render(c, T.INK, t, 0, m)
+            figure(c, (k - 1.5) * 0.16 * h, -0.68 * h, 0.2 * h, t, T.INK, 1, k * 0.8, motion=m)
 
 
 def house(c, x, y, w, h, t, motion=None):
     """A house on a hill: walls, a peaked roof (a triangle wave, one
-    peak of it), a door."""
+    peak of it) hanging over them, a door, a window."""
     W.Ribbon(Wave.flat(0.0), 0.5 * w, -0.6 * h, 'y', (x, y), step=h).render(c, T.INK, t, 0, motion)
     roof = Wave.triangle(0.2 * h, 1.0 / (2.4 * w), harmonics=4)
     W.Ribbon(roof.scaled(-1), roof, 1.2 * w, 'x', (x - 0.6 * w, y - 0.6 * h),
              step=max(1.0, w / 12)).render(c, T.INK, t, 0, motion)
     W.Ribbon(Wave.flat(0.0), 0.1 * w, -0.32 * h, 'y', (x + 0.15 * w, y), step=h).render(
+        c, T.PAPYRUS, t, 0, motion)
+    W.Ribbon(Wave.flat(0.0), 0.07 * w, -0.12 * h, 'y', (x - 0.22 * w, y - 0.36 * h), step=h).render(
         c, T.PAPYRUS, t, 0, motion)
 
 
@@ -629,14 +692,46 @@ def sun(c, x, y, r, t, color=T.OCHRE, phase=0.0):
 
 def cloud(c, x, y, w, t, fill=T.PAPYRUS, line=T.INK, phase=0.0):
     """A cloud: one orbit with a bumpy radius (the radius a wave of
-    the parameter), flatter underneath, drifting."""
-    drift = W.Motion(dx=Wave(0.08 * w, 0.0, 0.15, phase))
+    the parameter), flatter underneath."""
     blob = W.Orbit(Wave(Wave(0.07 * w, 4.0, 0.0, phase, 0.42 * w), 1.0, 0.0, math.pi / 2),
                    Wave(Wave(0.05 * w, 4.0, 0.0, phase + 0.4, 0.17 * w), 1.0, 0.0, 0.0)
                    + Wave(0.05 * w, 1.0, 0.0, math.pi / 2),
                    (x, y), 72)
-    blob.render(c, fill, t, 0, drift)
-    blob.render(c, line, t, 1, drift)
+    blob.render(c, fill, t, 0)
+    blob.render(c, line, t, 1)
+
+
+def clouds(c, rect, t, fill=T.PAPYRUS, line=T.INK, storm=0.0, phase=0.0):
+    """The clouds, going round the sky. Each row rides the bottom of a
+    great circle turning at a steady rate — an orbit, so a cloud
+    crosses at an even pace, leaves at one edge and, a long while
+    after, comes back in at the other; the far row smaller and slower.
+    Weather (`storm`, 0 to 1) brings more of them, bigger and lower,
+    and past the worst of it twice as fast."""
+    x0, y0, w, h = rect
+    for j, x, y, cw in carousel(rect, t, storm, phase):
+        if x0 - cw < x < x0 + w + cw and y > y0 - cw:
+            cloud(c, x, y, cw, t, fill, line, phase=j * 1.9)
+
+
+def carousel(rect, t, storm=0.0, phase=0.0):
+    """Where every cloud is at `t`, on or off the sky: (j, x, y, width)
+    for each, the far row first. The rows are great circles whose
+    bottoms just touch the sky; a speed a multiple of 1/600 rad/s keeps
+    a lap whole within the timeline's loop."""
+    x0, y0, w, h = rect
+    cx = x0 + w / 2
+    fast = 2 if storm > 0.6 else 1
+    for fy, fw, fr, speed, n in ((0.09, 0.14, 6.0, 1 / 600, 40), (0.2, 0.22, 4.0, 3 / 600, 28)):
+        count = int(n * (0.4 + 1.2 * storm))
+        R = fr * w
+        cy = y0 + (fy + 0.06 * storm) * h
+        size = fw * w * (1 + 0.4 * storm)
+        for j in range(count):
+            a = TAU * j / count + phase
+            x = cx + Wave(R, 0.0, fast * speed, a)(0, t)
+            y = cy - R + Wave(R, 0.0, fast * speed, a + math.pi / 2)(0, t)
+            yield j, x, y, size * (1 + Wave(0.3, 2.1 / TAU)(j))
 
 
 def lightning(c, x, y, h, t, phase=0.0):

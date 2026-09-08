@@ -99,16 +99,11 @@ class Stage:
             r = (0.09 if always_sun else 0.06) * h
             fx = 0.84 if always_sun else {'sea': 0.6, 'harbour': 0.5}.get(self.scene.setting, 0.72)
             S.sun(c, x0 + fx * w, y0 + 0.17 * h, r, t)
-        if storm > 0.25:
-            dark = storm > 0.6
-            for k, (fx, fy, fw) in enumerate(((0.2, 0.14, 0.26), (0.55, 0.1, 0.22), (0.86, 0.2, 0.2))):
-                if k == 2 and not dark:
-                    continue
-                S.cloud(c, x0 + fx * w, y0 + fy * h, fw * w, t,
-                        fill=T.INK if dark else T.PAPYRUS, phase=k * 1.9)
-            if dark:
-                S.lightning(c, x0 + 0.3 * w, y0 + 0.3 * h, 0.18 * h, t)
-                S.lightning(c, x0 + 0.62 * w, y0 + 0.28 * h, 0.14 * h, t, phase=2.4)
+        dark = storm > 0.6
+        S.clouds(c, (x0, y0, w, h), t, fill=T.INK if dark else T.PAPYRUS, storm=storm)
+        if dark:
+            S.lightning(c, x0 + 0.3 * w, y0 + 0.3 * h, 0.18 * h, t)
+            S.lightning(c, x0 + 0.62 * w, y0 + 0.28 * h, 0.14 * h, t, phase=2.4)
 
     def water(self, c, t, storm):
         x0, y0, w, h = self.rect
@@ -174,11 +169,11 @@ class Stage:
         S.walls(c, x, y - 0.02 * self.h, 0.36 * self.w, 0.22 * self.h, t,
                 fallen=props.get('fallen'))
         if props.get('horse'):
-            hx, hy = self.on_land(0.64)
+            hx, hy = self.on_land(0.6)
             riders = 0
             if props.get('inside'):
                 riders = 1 + CREW[self.scene.crew]
-            S.horse(c, hx, hy, 0.24 * self.h, t, riders=riders)
+            S.horse(c, hx, hy, 0.21 * self.h, t, riders=riders)
 
     def mark_town(self, c, t, props):
         for f, w in ((0.72, 0.08), (0.84, 0.1), (0.95, 0.07)):
@@ -446,8 +441,7 @@ class Stage:
         floor = y0 + 0.84 * h
         W.Ribbon(Wave.flat(0.0), 0.3 * h, 1.2 * w, 'x', (x0 - 0.1 * w, floor + 0.3 * h), step=40).render(
             c, T.INK_SOFT, t, 0)
-        for k, (fx, fy, fw) in enumerate(((0.25, 0.16, 0.3), (0.7, 0.12, 0.26))):
-            S.cloud(c, x0 + fx * w, y0 + fy * h, fw * w, t, fill=T.INK, line=T.INK, phase=k * 2.3)
+        S.clouds(c, (x0, y0, w, h), t, fill=T.INK, line=T.INK, storm=0.5, phase=1.0)
         tx = x0 + 0.46 * w
         W.Ribbon(Wave.flat(0.0), 0.05 * w, 0.06 * h, 'y', (tx, floor - 0.03 * h), step=20).render(
             c, T.INK, t, 0)
